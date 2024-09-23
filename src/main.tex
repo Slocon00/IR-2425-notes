@@ -1,0 +1,61 @@
+\documentclass[12pt]{report}
+\usepackage{graphicx} % Required for inserting images
+\linespread{1.2}
+
+\usepackage[dvipsnames]{xcolor}
+\usepackage{tikz}
+\usepackage[breakable]{tcolorbox}
+\appto{\bibsetup}{\raggedright}
+
+\tikzstyle{mybox} = [draw=PineGreen, fill=PineGreen!5, ultra thick, rectangle, rounded corners, inner sep=10pt, inner ysep=15pt, text width=0.90\textwidth, align=left] 
+\tikzstyle{boxtitle} = [fill=PineGreen, text=white, ultra thick, rectangle, rounded corners, inner sep=10pt, inner ysep=8pt, text width=0.90\textwidth]
+
+\newcommand{\BoxDef}[2]{%
+\vspace*{10px}
+\noindent
+
+\begin{center}
+\begin{tikzpicture}
+    \node[mybox](box){\rule{0pt}{30pt}\ignorespaces#2\unskip};
+    \node[boxtitle, anchor=north west] at (box.north west) {\textbf{#1}};
+\end{tikzpicture}
+\end{center}
+}
+
+\usepackage[]{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=3cm, centering]{geometry}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tabularx}
+\usepackage{tabularray}
+
+\begin{document}
+
+\begin{titlepage}
+\hrule
+\vspace{15pt}
+\begin{center}
+    \Huge{\textbf{\Huge \textbf{Information Retrieval 24-25}} \\ Notes}\\
+\end{center}
+\vspace{15pt}
+\hrule
+\vfill
+\hrule
+\begin{center}
+    \Large University of Pisa \\ M.Sc. in Computer Science
+\end{center}
+\end{titlepage}
+
+\tableofcontents
+
+\input{1 Intro.tex}
+\input{2 Evaluation.tex}
+
+\nocite{*}
+\bibliographystyle{unsrt}
+\clearpage\bibliography{bibliography}
+
+\end{document}

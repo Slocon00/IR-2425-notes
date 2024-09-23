@@ -1,0 +1,116 @@
+\chapter{Evaluation}
+
+To evaluate the quality of a IR system, say a SE, we may ask questions such as: how fast does it index a collection, how fast does it search (efficiency)? Or, does it recommend good related pages/products to buy to the user (effectiveness)? However, these questions alone do not provide any objective information about the intrinsic quality of the SE. We could say that a SE is ``good'' if it makes its users happy; but to measure this happiness, we can use different definitions: for example, how many times a search result is clicked, how long users stay on the same webpage, how often they return to use the SE. Since happiness by itself is impossible to measure, a commonly used proxy is \textbf{relevance} of search results.
+
+\section{Relevance}
+
+In order to measure relevance, three elements are needed:
+\begin{itemize}
+    \item A benchmark document collection;
+    \item A benchmark suite of queries;
+    \item An assessment of either \textbf{relevant} or \textbf{non-relevant} for each query and document.
+\end{itemize}
+To construct the benchmark, we would have to analyze each possible pair of query and document and assign a relevance to it. Relevance assessment can be binary (relevant/not relevant), or multi-valued (0, 1, 2, 3 ...) for more nuance. Obviously, since assigning a relevance value to each query-document pair in a collection is way too expensive, a subset of the documents is used instead.
+
+Assigning relevance must be done externally by humans. Some companies use crowdsourcing platforms (e.g., Amazon Mechanical Turk) to present pairs to low cost, not highly qualified workers. This solution is cheap, but the outcome may not be as good as one produced by professionals. 
+
+But how are the queries defined? They must be relevant and suitable to the documents in the collection, and must be representative of user needs (i.e., they should resemble a normal query done by a person). One way to find them is to sample directly from existing query logs of the SE, if available. For classical, non-Web IR systems, these query logs may be nearly empty, as the query rate tends to be slow. In this case, experts may handcraft ``user needs'' and associated queries. Among popular public test collections is \textbf{TREC} (\textbf{Text REtrieval Conference}), where focus areas are called \textbf{tracks}; each track has a motivating use case, usually an abstraction of a user task. In practice, TREC consists of:
+\begin{itemize}
+    \item A set of documents;
+    \item A set of information needs (called \textbf{topics});
+    \item Relevance judgements that indicate which documents should be retrieved by which topics.
+\end{itemize}
+The result of a retrieval system executing a task on a test collection is called \textbf{run}. The technique first used to select the sample of documents to present to a human judge is \textbf{pooling}: the top results for a set of runs are combined to form a pool and only those documents are judged. Since this method automatically assumes that all unpooled documents are not relevant (so they remain unjudged), alternative methods have been investigated by TREC tracks to obtain judgements that support fair evaluation.
+
+Note that TREC does not contain any query, and only generic user needs. Participants are free to define (manually or automatically) actual queries for their specific IR system.
+
+\subsection{Measures}
+
+\subsubsection{Evaluation of Unranked Retrieval Sets}
+
+\textbf{Precision} and \textbf{recall} are binary assessments commonly used to evaluate the effectiveness of an IR system. They are defined on the basis of a set of counts, described by the table below.
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|}
+         \hline
+         & Retrieved & Not retrieved \\
+        \hline
+        Relevant & TP & FN \\
+        \hline
+        Non-relevant & FP & TN \\
+        \hline
+    \end{tabular}
+\end{table} \\
+The two measures are then defined as:
+\begin{itemize}
+    \item \textbf{Precision:} fraction of retrieved documents that are relevant.
+    \begin{equation*}
+            \textit{Precision} = \frac{TP}{TP + FN}
+    \end{equation*}
+    
+    \item \textbf{Recall:} fraction of relevant documents that are retrieved.
+    \begin{equation*}
+        \textit{Recall} = \frac{TP}{TP + FP}
+    \end{equation*}
+\end{itemize}
+The \textbf{F-Measure} (or \textbf{F-Score}) is another metric which condenses both precision and recall; it's calculated as the harmonic mean of the two:
+\begin{equation*}
+    F = 2 \frac{\textit{Prec.}\textit{Rec.}}{\textit{Prec.} + \textit{Rec.}}
+\end{equation*}
+The harmonic mean is alway less or equal than the arithmetic/geometric mean: if the two values are very different, the harmonic mean is closer to their minimum. A weighted variant also exists; let $\alpha$ be the weight assigned to precision and $\beta$ the weight assigned to recall, such that $\alpha = 1/(1+\beta^2)$, \textbf{weighted F-Measure} is calculated as:
+\begin{equation*}
+    F_{\beta} = (\beta^2 + 1)\frac{\textit{Prec.}\textit{Rec.}}{\beta^2 \textit{Prec.} + \textit{Rec.}}
+\end{equation*}
+
+\subsubsection{Evaluation of Ranked Retrieval Results}
+
+Precision, recall, and F-score are set-based methods, meaning that they are computed using an unordered set of documents. They can be extended to evaluate the ranked retrieval results returned by search engines. Some of these measures are \textbf{Mean Average Precision} (\textbf{MAP}), \textbf{Precision@K} (\textbf{P@K}), \textbf{Mean Reciprocal Rank} (\textbf{MRR}) for binary relevance, and \textbf{Normalized Discounted Cumulative Gain} (\textbf{NDCG}) for multiple levels of relevance.
+
+\paragraph{Mean Average Precision}
+
+Consider a set of documents returned by the SE, ordered by rank. Consider the indexes $K_1, \dots, K_R$ at which recall increases. Precision is calculated at each $K_i$, considering only the documents with lower indexes, and the average across all $K_i$ is calculated at the end. MAP is then calculated as the mean of the averages across multiple queries/rankings.
+
+MAP is a macro-averaging measure; each query counts equally, even if only few documents are relevant for certain queries and many are relevant for other queries.
+
+\paragraph{Precision@K}
+
+MAP takes into account all documents returned by the query. However, especially in Web searches, the number of retrieved documents may be unknown or very high; what truly matters is how any good results are found in the first few pages. To calculate Precision@K, we set a rank threshold $K$, we compute the number of relevant documents among the top $K$ ranking ones, and calculate P@K as:
+\begin{equation*}
+    P@K = \frac{\sum \textit{relevant documents in top-K}}{K}
+\end{equation*}
+i.e., it is the fraction of relevant documents across the top-K retrieved ones. In a similar fashion, we can also calculate \textbf{Recall@K} as the fraction of relevant documents that are retrieved among the top-K.
+
+P@K by itself does not average very well over a set of queries, since the number of relevant documents for a query affects the result. Anyway, it (along with \textbf{MAP@K}) are largely used for Web searches and recommender systems.
+
+\paragraph{Mean Reciprocal Rank}
+
+Suppose there is only a single relevant document for a given query. A way to approximate the rank of the correct answer could be to consider the search duration for the user: if he/she takes a long time to find the answer its ranking is low, if instead he/she finds it quickly it is ranked high.
+
+Consider the rank position $\textit{rank}_i$ of the first relevant document returned by a query $q_i \in Q$. The \textbf{Reciprocal Rank} is calculated as:
+\begin{equation*}
+    \textbf{RR} = \frac{1}{\textit{rank}_i}
+\end{equation*}
+MRR is the mean of the RRs across multiple queries.
+
+\subsubsection{Evaluation of Non-Binary Relevance}
+
+A popular measure used to evaluate web searches with non-binary relevance is \textbf{cumulative gain}, and in particular \textbf{Normalized Discounted Cumulative Gain} (\textbf{NDCG}). The idea is that the lower the rank of a relevant document is, the less it is useful for the user, since it is less likely to be visited.
+
+Discounted Cumulative Gain uses graded relevance (or \textbf{gain}) as a measure of usefulness; it is accumulated starting at the top of the ranking and may also be discounted (= reduced) at lower ranks. The typical discount is $\frac{1}{\log(\textit{rank})}$. The formula used to calculate DCG is:
+\begin{gather*}
+    \textit{DCG} = r_1 + \frac{r_2}{\log_2 2} + \frac{r_3}{\log_2 3} + \dots + \frac{r_n}{\log_2 n} = \\
+    = r_1 + \sum_{i=2}^n \frac{r_i}{\log_2 i}
+\end{gather*}
+This case uses base 2 for the logarithm, but any other base can be used as well. As for the other measures, it can be calculated only for the $p$ top ranking documents instead of the whole set of retrieved ones.
+
+An alternative formulation makes it so that high relevance judgements become much more important:
+\begin{equation*}
+    DCG = \sum_{i=1}^n \frac{2*{r_i} - 1}{\log_2(1+i)}
+\end{equation*}
+This variant is used by some web search companies.
+
+NDCG is evaluated over some number of $k$ top search results; let $Q$ be the set of queries and $R(j,d)$ the relevance score given to document $d$ by query $j$. Then,
+\begin{equation*}
+    NDCG(Q,k) = \frac{1}{|Q|} \sum_{j=1}^{|Q|} Z_{kj} \sum_{m=1}^k  \frac{2^{R(j,m)} - 1}{\log_2 (1+m)} ,
+\end{equation*}
+where $Z_{kj}$ is a normalization factor calculated to make it so that a perfect ranking's NDCG at K for query $j$ is exactly 1; the prefect ranking would be one that first returns all the docuents with the highest relevance level, then the next highest relevance level, and so on.
