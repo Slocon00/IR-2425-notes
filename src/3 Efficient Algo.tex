@@ -1,0 +1,41 @@
+\chapter{Efficient Algorithms for Modern CPUs}
+
+Modern IR systems must manage billions of documents and queries, so we need efficient algorithms that can handle such amounts of data, as well as scale across global infrastructures. Efficiency does not only mean a better user experience, but also a reduction in costs, both for computing and cooling systems. Additionally, efficient systems consume less energy, and therefore are more environmentally sustainable.
+
+Computers use several layers of cache on their chips to speed up RAM and disk access time. When an instruction or a block of data must be read, it is also stored accordingly into the cache(s), since they are faster to access. The smaller the cache, the faster the access time. Ideally, programs should take in consideration how cache layers are used and exploit temporal and spatial locality.
+\begin{itemize}
+    \item \textbf{Temporal locality} states that when a block of data has been accessed, it is likely to be accessed again very soon. Cache replacement policies such as LRU make sure to keep the data that is most likely to be needed.
+    \item \textbf{Spatial locality} states that when a block of data has been accessed, it is likely that nearby memory locations will also be accessed in the near future.
+    
+    Normally, when a location is accessed, a larger chunk of memory is read (a cache line of 64 bytes). \textbf{Hardware prefetchers} can observe the behaviour of a program and prefetch data if repetitive patterns of cache misses appear.
+\end{itemize}
+
+\section{Parallelism}
+
+Another interesting thing to consider is \textbf{parallelism}. Parallelism can speed up a CPU through:
+\begin{itemize}
+    \item \textbf{Pipelining}, which overlaps the execution of multiple instructions so that different parts of the CPU are kept busy at the same time;
+    \item \textbf{Superscalar processors}, which have multiple execution units that process independent operations simultaneously;
+    \item \textbf{SIMD}, which are a special kind of instructions executing the same operation on more data at the same time.
+\end{itemize}
+
+\paragraph{Pipelining}
+When an instruction is executed, it actually goes through multiple stages on the CPU. The most simple pipelining is a 5-stage one: fetch, decode, execute, load/store, write. The time needed to move an instruction from one stage to the other defines the \textbf{clock time}, so it is chosen to accomodate the longest possible operation (usually memory access). 
+
+Modern high-performance CPUs have multiple pipeline stages, usually 10-20, but may be more. This means that the latency to execute something simple like an \texttt{add} operation may need up to 20 or more cycles. \textbf{Latency} is the total time that an operation passes in the pipeline, while \textbf{throughput} of a CPU is the number of instructions that are completed and exit the pipeline per unit of time.
+
+\textbf{Pipeline hazards} are situations where the next instruction cannot go forward in the pipeline in the next clock cycle. This can happen because of:
+\begin{itemize}
+    \item \textbf{Structural hazards}, when one or more instructions must wait because another one further in the pipeline is using a component. Thiese hazards are unavoidable.
+    \item \textbf{Data hazards}, when an instruction must wait for an operand to be computed from a previous step. They can be avoided by restructuring computation;
+    \item \textbf{Control hazards}, when the CPU cannot tell which branch in an \texttt{if-else} statement it must choose. Normally, it will choose randomly and keep loading instructions into the pipeline, and, if the choice turns out to be wrong, the pipeline will be flushed to accomodate the correct branch (thus wasting some cycles).
+\end{itemize}
+Regarding the last type, thankfully CPUs have \textbf{branch predictors} capable of guessing which branch is the more likely to be picked by observing past behaviour. The branch predictor is capable of noticing particular patterns, such as a condition holding true/false for several loop iterations, or a condition alternating between true/false between successive instructions.
+
+\paragraph{Superscalar Processing}
+In superscalar processing, multiple instructions are dispatched do different execution units on the core (each core has several specialized ALUs). This type of parallelism is also called \textbf{instruction-level parallelism}.
+
+\paragraph{Single Instruction, Multiple Data}
+SIMD instructions operate n special registers that hold 128, 256, or even 512 bits. Data in registers is divided into blocks of 8, 16, 32, or 64 bits.
+
+SIMD instructions can be used in two ways: either through \textbf{auto-vectorization}, meaning that the compiler automatically converts scalar operations into SIMD ones, or they are explicitly used by the programmer in the code. In the latter case, there is an higher level of control over which operations are optimized (since the automatic conversion done by the compiler can only optimize simpler instructions), but obviously requires detailed hardware knowledge.

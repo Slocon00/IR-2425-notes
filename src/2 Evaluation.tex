@@ -105,12 +105,12 @@ This case uses base 2 for the logarithm, but any other base can be used as well.
 
 An alternative formulation makes it so that high relevance judgements become much more important:
 \begin{equation*}
-    DCG = \sum_{i=1}^n \frac{2*{r_i} - 1}{\log_2(1+i)}
+    \textit{DCG} = \sum_{i=1}^n \frac{2*{r_i} - 1}{\log_2(1+i)}
 \end{equation*}
 This variant is used by some web search companies.
 
-NDCG is evaluated over some number of $k$ top search results; let $Q$ be the set of queries and $R(j,d)$ the relevance score given to document $d$ by query $j$. Then,
+NDCG is the normalized version of DCG, and is calculated as the ratio between the DGC of a response and the ideal DGC of a perfect ranking; the prefect ranking would be one that first returns all the docuents with the highest relevance level, then the next highest relevance level, and so on.
 \begin{equation*}
-    NDCG(Q,k) = \frac{1}{|Q|} \sum_{j=1}^{|Q|} Z_{kj} \sum_{m=1}^k  \frac{2^{R(j,m)} - 1}{\log_2 (1+m)} ,
+    \textit{NDCG} = \frac{DCG}{\textit{Ideal} \ DGC}
 \end{equation*}
-where $Z_{kj}$ is a normalization factor calculated to make it so that a perfect ranking's NDCG at K for query $j$ is exactly 1; the prefect ranking would be one that first returns all the docuents with the highest relevance level, then the next highest relevance level, and so on.
+NDCG takes values between 0 and 1.
