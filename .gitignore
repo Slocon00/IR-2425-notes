@@ -10,3 +10,5 @@
 *.lof
 *.lot
 *.gz
+src/svg-inkscape/
+src/.latexmkrc
