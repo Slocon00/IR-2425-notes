@@ -45,12 +45,12 @@ The two measures are then defined as:
 \begin{itemize}
     \item \textbf{Precision:} fraction of retrieved documents that are relevant.
     \begin{equation*}
-            \textit{Precision} = \frac{TP}{TP + FN}
+            \textit{Precision} = \frac{TP}{TP + FP}
     \end{equation*}
     
     \item \textbf{Recall:} fraction of relevant documents that are retrieved.
     \begin{equation*}
-        \textit{Recall} = \frac{TP}{TP + FP}
+        \textit{Recall} = \frac{TP}{TP + FN}
     \end{equation*}
 \end{itemize}
 The \textbf{F-Measure} (or \textbf{F-Score}) is another metric which condenses both precision and recall; it's calculated as the harmonic mean of the two:
@@ -88,7 +88,7 @@ Suppose there is only a single relevant document for a given query. A way to app
 
 Consider the rank position $\textit{rank}_i$ of the first relevant document returned by a query $q_i \in Q$. The \textbf{Reciprocal Rank} is calculated as:
 \begin{equation*}
-    \textbf{RR} = \frac{1}{\textit{rank}_i}
+    \textit{RR} = \frac{1}{\textit{rank}_i}
 \end{equation*}
 MRR is the mean of the RRs across multiple queries.
 
@@ -105,11 +105,11 @@ This case uses base 2 for the logarithm, but any other base can be used as well.
 
 An alternative formulation makes it so that high relevance judgements become much more important:
 \begin{equation*}
-    \textit{DCG} = \sum_{i=1}^n \frac{2*{r_i} - 1}{\log_2(1+i)}
+    \textit{DCG} = \sum_{i=1}^n \frac{2^{r_i} - 1}{\log_2(1+i)}
 \end{equation*}
 This variant is used by some web search companies.
 
-NDCG is the normalized version of DCG, and is calculated as the ratio between the DGC of a response and the ideal DGC of a perfect ranking; the prefect ranking would be one that first returns all the docuents with the highest relevance level, then the next highest relevance level, and so on.
+NDCG is the normalized version of DCG, and is calculated as the ratio between the DGC of a response and the ideal DGC of a perfect ranking; the perfect ranking would be one that first returns all the docuents with the highest relevance level, then the next highest relevance level, and so on.
 \begin{equation*}
     \textit{NDCG} = \frac{DCG}{\textit{Ideal} \ DGC}
 \end{equation*}

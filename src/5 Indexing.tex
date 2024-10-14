@@ -1,0 +1,52 @@
+\chapter{Indexing}
+
+When a user query is submitted to a IR system, the terms in the query must be compared to those contained in the documents in the collection in order to retrieve the relevant ones. If these systems were to use the vector/matrix representation of queries and documents as they are, the complexity of the retrieval would be too high to provide a reasonable response time: we'd need to compute the similarity (i.e., product) between the query vector and all the document vectors in the collection, which are many and with a high number of dimensions. However, these representations tend to be very sparse, meaning that a lot of information could be summarized in a more compact form.
+
+\textbf{Inverted indexes} are the most effective data structures used in IR systems for efficient query processing. They consist of a collection of lists (called \textbf{posting lists}), each corresponding to a term in the collection and containing information about the documents in which the term appears in. Each term in the index is also accompanied by its document frequency and its collection frequency; each document ID in the posting list is accompanied by the term frequency in that document. Document IDs are kept sorted in ascending order.
+
+Inverted indexes are often stored in main memory to reduce access time; since they can be very big (the dictionary usually contains a huge number of distinct terms, and the collection holds a huge number of documents), lossless compression algorithms are used to reduce their size.
+\clearpage
+\begin{figure}[!h]
+    \centering
+    \includesvg[width=0.75\textwidth]{img/inverted_index.svg}
+    \caption{Example of inverted index.}
+    \label{fig:inverted-index}
+\end{figure}
+
+\section{Query Processing}
+
+This section will illustrate the fundamental query processing strategies for Boolean retrieval (when an exact answer is required), and ranked retrieval (when a ranked list of scored documents is required). We will assume that the query has already been pre-processed. The two classical query processing strategy categories are \textbf{term-at-a-time} (\textbf{TAAT}), and \textbf{document-at-a-time} (\textbf{DAAT}).
+
+\paragraph{TAAT}
+In TAAT, posting lists are read one query term at a time, and accumulators are used to keep track of the documents that satisfy the query; these accumulators may be simple counters or sum up the document score. Accumulators are normally stored in a direct access table or hash table: the first data structure uses the document ID as the key to access the accumulator, while the second uses an hash key calculated from the document ID. If a query is in conjunctive (AND) mode, only the IDs with accumulators equal to the number of query terms are returned; if it is in disjunctive (OR) mode, all the IDs with non-zero accumulators are returned. These approaches are very simple to implement but tend to produce a lot of cache misses because of the large number of accumulators needed. Also, there is no way to skip document IDs for selective queries.
+
+\paragraph{DAAT}
+In DAAT, the posting lists of all the query terms are scanned in parallel, calculating the document score when it is seen in one or more posting lists. Depending on the mode of the query, a different strategy is used:
+\begin{itemize}
+    \item For OR queries, the union of all the posting lists must be computed. The lists are scanned in parallel and merged with the same approach used in the merge phase of a K-way Merge Sort.
+    \item For AND queries, the intersection of all posting lists must be computed. Similarly to before, the lists are scanned in parallel, adding an ID to the result only if all the pointers are pointing to that same ID, otherwise advancing the pointer(s) with the lowest ID without adding anything to the result.
+\end{itemize}
+
+\subsection{Efficient Document ID Searching}
+
+The main operations on posting lists are:
+\begin{itemize}[itemsep=0pt]
+    \item[-] \texttt{first}(): places the pointer to the first docID
+    \item[-] \texttt{docID}(): returns the current docID
+    \item[-] \texttt{position}(): returns the position of the pointer
+    \item[-] \texttt{next}(): moves the pointer to the next docID
+    \item[-] \texttt{nextGEQ}($d$): moves the pointer to the next docID that is greater or equal than $d$
+\end{itemize}
+This last operation allows us to skip some document IDs, without having to scan all the posting list; this is useful when the query to be processed is in AND mode. \texttt{NextGEQ} can be implemented in different ways. Common choices are Binary Exponential Search and skip pointers.
+
+Binary exponential search is similar to basic binary search, but uses a step size that doubles (i.e., increases exponentially) at each iteration, starting from stepsize 1. Assuming there are $t$ IDs greater of equal than the current, the algorithm runs in $\Theta (\log(\frac{n}{t}))$ time. In practice, it is not very efficient because of really small or really big skips. It also cannot be used with most compression algorithms, because they don't allow random access.
+
+Skip pointers can be placed to skip $k$ elements at once: each pointer is labeled with the value it points to. This way, until the searching algorithm encounters pointers with labels smaller or equal than the current ID, it can use the pointers instead of moving one element at a time. This algorithm is usable with compression (since entire blocks of ajdacent IDs can be compressed together).
+
+In DAAT, \texttt{nextGEQ} is used to skip IDs during the parallel reading of the posting lists. In TAAT, posting lists are intersected from shortest to longest: this is done to make sure each step produces the smallest possible intermediate result.
+
+\subsection{Positional Indexes}
+
+Simple conjunctive/disjuntive queries are actually quite rare in practice, since users tend not to use the dedicated functionalities provided by the IR system. Many search engines provide advanced query language supporting operators such as \textbf{phrase queries}: for example, if a user searched for ``information retrieval'', the result should contain documents where those two words appear close to each other (as a phrase), and not just separately as if they were semantically disconnected.
+
+To support such queries, the inverted index must be expanded to also include the positions of all occurrences of a term within a document. If a set of words constitutes a phrase, then, fixed the document, we need to look for an occurrence of the first word in position $p$, an occurrence of the second in position $p+1$, and so on. This way, instead of computing the frequency of single terms, we consider the frequency of the entire set.
