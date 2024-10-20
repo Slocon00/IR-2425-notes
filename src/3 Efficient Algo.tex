@@ -26,14 +26,14 @@ Modern high-performance CPUs have multiple pipeline stages, usually 10-20, but m
 
 \textbf{Pipeline hazards} are situations where the next instruction cannot go forward in the pipeline in the next clock cycle. This can happen because of:
 \begin{itemize}
-    \item \textbf{Structural hazards}, when one or more instructions must wait because another one further in the pipeline is using a component. Thiese hazards are unavoidable.
+    \item \textbf{Structural hazards}, when one or more instructions must wait because another one further in the pipeline is using a component. These hazards are unavoidable.
     \item \textbf{Data hazards}, when an instruction must wait for an operand to be computed from a previous step. They can be avoided by restructuring computation;
     \item \textbf{Control hazards}, when the CPU cannot tell which branch in an \texttt{if-else} statement it must choose. Normally, it will choose randomly and keep loading instructions into the pipeline, and, if the choice turns out to be wrong, the pipeline will be flushed to accomodate the correct branch (thus wasting some cycles).
 \end{itemize}
 Regarding the last type, thankfully CPUs have \textbf{branch predictors} capable of guessing which branch is the more likely to be picked by observing past behaviour. The branch predictor is capable of noticing particular patterns, such as a condition holding true/false for several loop iterations, or a condition alternating between true/false between successive instructions.
 
 \paragraph{Superscalar Processing}
-In superscalar processing, multiple instructions are dispatched do different execution units on the core (each core has several specialized ALUs). This type of parallelism is also called \textbf{instruction-level parallelism}.
+In superscalar processing, multiple instructions are dispatched to do different execution units on the core (each core has several specialized ALUs). This type of parallelism is also called \textbf{instruction-level parallelism}.
 
 \paragraph{Single Instruction, Multiple Data}
 SIMD instructions operate n special registers that hold 128, 256, or even 512 bits. Data in registers is divided into blocks of 8, 16, 32, or 64 bits.

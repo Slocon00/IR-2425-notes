@@ -2,7 +2,7 @@
 
 When a user query is submitted to a IR system, the terms in the query must be compared to those contained in the documents in the collection in order to retrieve the relevant ones. If these systems were to use the vector/matrix representation of queries and documents as they are, the complexity of the retrieval would be too high to provide a reasonable response time: we'd need to compute the similarity (i.e., product) between the query vector and all the document vectors in the collection, which are many and with a high number of dimensions. However, these representations tend to be very sparse, meaning that a lot of information could be summarized in a more compact form.
 
-\textbf{Inverted indexes} are the most effective data structures used in IR systems for efficient query processing. They consist of a collection of lists (called \textbf{posting lists}), each corresponding to a term in the collection and containing information about the documents in which the term appears in. Each term in the index is also accompanied by its document frequency and its collection frequency; each document ID in the posting list is accompanied by the term frequency in that document. Document IDs are kept sorted in ascending order.
+\textbf{Inverted indexes} are the most effective data structures used in IR systems for efficient query processing. They consist of a collection of lists (called \textbf{posting lists}), each corresponding to a term in the collection and containing information about the documents in which the term appears in. Each term in the index is also accompanied by its document frequency and its collection frequency; each document ID in the posting list is accompanied by the term frequency in that document. Document IDs are kept sorted in increasing order.
 
 Inverted indexes are often stored in main memory to reduce access time; since they can be very big (the dictionary usually contains a huge number of distinct terms, and the collection holds a huge number of documents), lossless compression algorithms are used to reduce their size.
 \clearpage
@@ -40,9 +40,19 @@ The main operations on posting lists are:
 This last operation allows us to skip some document IDs, without having to scan all the posting list; this is useful when the query to be processed is in AND mode. \texttt{NextGEQ} can be implemented in different ways. Common choices are Binary Exponential Search and skip pointers.
 
 Binary exponential search is similar to basic binary search, but uses a step size that doubles (i.e., increases exponentially) at each iteration, starting from stepsize 1. Assuming there are $t$ IDs greater of equal than the current, the algorithm runs in $\Theta (\log(\frac{n}{t}))$ time. In practice, it is not very efficient because of really small or really big skips. It also cannot be used with most compression algorithms, because they don't allow random access.
-
+\begin{figure}[!ht]
+    \centering
+    \includesvg[width=0.75\textwidth]{img/binary_search_exp.svg}
+    \caption{Example of exponential binary search.}
+    \label{fig:binary-search}
+\end{figure} \\
 Skip pointers can be placed to skip $k$ elements at once: each pointer is labeled with the value it points to. This way, until the searching algorithm encounters pointers with labels smaller or equal than the current ID, it can use the pointers instead of moving one element at a time. This algorithm is usable with compression (since entire blocks of ajdacent IDs can be compressed together).
-
+\begin{figure}[!ht]
+    \centering
+    \includesvg[width=0.75\textwidth]{img/skip_pointers.svg}
+    \caption{Example of skip pointers.}
+    \label{fig:skip-pointers}
+\end{figure} \\
 In DAAT, \texttt{nextGEQ} is used to skip IDs during the parallel reading of the posting lists. In TAAT, posting lists are intersected from shortest to longest: this is done to make sure each step produces the smallest possible intermediate result.
 
 \subsection{Positional Indexes}
@@ -50,3 +60,35 @@ In DAAT, \texttt{nextGEQ} is used to skip IDs during the parallel reading of the
 Simple conjunctive/disjuntive queries are actually quite rare in practice, since users tend not to use the dedicated functionalities provided by the IR system. Many search engines provide advanced query language supporting operators such as \textbf{phrase queries}: for example, if a user searched for ``information retrieval'', the result should contain documents where those two words appear close to each other (as a phrase), and not just separately as if they were semantically disconnected.
 
 To support such queries, the inverted index must be expanded to also include the positions of all occurrences of a term within a document. If a set of words constitutes a phrase, then, fixed the document, we need to look for an occurrence of the first word in position $p$, an occurrence of the second in position $p+1$, and so on. This way, instead of computing the frequency of single terms, we consider the frequency of the entire set.
+
+\section{Dynamic Pruning}
+
+Since users are only interested in the top few pages in the result of a query, it is not necessary to compute the score of all documents whose ID is contained in the posting lists of the query terms. Strategies for dynamic pruning of the IDs exist for both TAAT and DAAT, and both conjunctive and disjunctive queries. The basic idea behind these strategies is to keep some additional information about the scores calculated so far in order to decide whether to consider or skip certain elements. The two approaches shown next (\textbf{WAND} and \textbf{MaxScore}) store the top-$k$ IDs in a min-heap and uses the current minimum as a threshold to choose whether to add a document to the heap or to skip it; as a way to prune the search space, an upper bound of the actual score is used.
+
+\paragraph{Min-heaps}
+
+A \textbf{heap} is a tree-based data structure that satisfies the following property: \textit{if A is a parent of B, then the key of A is ordered w.r.t. the key of B according to a certain criterion}. A \textbf{min-heap} is a heap where the key of each node is always less or equal than those of its children, and the minimum key belongs to the root node. 
+
+\begin{figure}[!ht]
+    \centering
+    \includesvg[width=0.5\textwidth]{img/minheap.svg}
+    \caption{Example of min-heap.}
+    \label{fig:min-heap}
+\end{figure}
+
+Since the root represents the $k^{th}$ highest ranking document found so far, its key can be used as a \textbf{threshold} (indicated by the letter $\tau$) to decide if a document should be added to the heap (popping the root and readjusting the heap as necessary), or skipped.
+
+\paragraph{WAND}
+
+WAND (\textbf{Weak AND}) is a pruning strategy that is guaranteed to compute the exact top-$k$ results while skipping many postings in the process. The key idea is to store, for each posting list, the corresponding upper bound of the score, equal to the highest score in the entire list. Before we even calculate the real score of the document, we compare the sum of these upper bounds with the current threshold. If the sum is smaller than $\tau$, the real sum is not computed, and pointers in the posting lists are moved forward; otherwise, the real score is calculated, and placed in the correct spot in the min-heap.
+
+\paragraph{MaxScore}
+
+MaxScore uses the current threshold to split the posting lists into \textbf{essential} ones and \textbf{non-essential} ones. The lists are first sorted by their upper bounds, and then scanned in order; the first list whose upper bound is sufficiently high that, if summed to any lower bound, would exceed $\tau$ is considered essential, as well as all the others above it. The remaining lists, which have upper bounds so low that even if summed all together result in a value lower than $\tau$ are considered non-essential. During query processing, a document cannot be returned as a top-$k$ result if at least one of its terms is in an essential list.
+
+\begin{figure}[!ht]
+    \centering
+    \includesvg[width=0.75\textwidth]{img/maxscore.svg}
+    \caption{Example of splitting of the posting lists in MaxScore.}
+    \label{fig:maxscore}
+\end{figure}
