@@ -1,0 +1,64 @@
+\chapter{Data Compression}
+
+Modern database systems are distributed across multiple physical nodes in a network. This distribution is necessary to handle the massive document collections held by search engines and to improve query processing performances. \textbf{Sharding} is a technique used to split data into smaller chunks, to be then assigned to the nodes of a network. Sharding ensures not only scalability and performance, but also fault tolerance, since shards are duplicated across different nodes to prevent data loss or slow-downs in case of node failures. 
+
+Indexes are also sharded. The assignment of shards to nodes can be represented as a matrix, where each column is a shard, and each row is a node. When a query must be processed, a component called \textbf{broker} submits the query to different rows (machines) trying to balance the load, considering which nodes have which shards. The bigger the index is, the more shards are needed; the more users are querying the system, the more replicas are needed. In both cases, it is useful to increase the number of machines.
+
+A way to reduce the number of shards needed to partition the index is to use \textbf{compression}. Compression algorithms are either lossless (i.e., the compressed data can be decompressed to the original form with no loss of information) and lossy (i.e., the compression process loses some information, which becomes unrecoverable). Either way, the process must be reversible, providing a function that can fully or almost fully restore the original data.
+
+The quality of a compression algorithm can be measured in terms on \textbf{compression ratio}, which is the ratio between the size of the original data and the size of the compressed data:
+\begin{equation*}
+    \textit{CR} = \frac{|B|}{|C(B)|}
+\end{equation*}
+If $\textit{CR} = r$, then the size of the compressed output is $r$ times smaller than the input size. The compression ratio can be chosen to find the best tradeoff between compression speed, amount of energy spent, loss of precision, etc. Ultimately, an important goal is to find a compression algorithm that allows direct computation over compressed data without the need for decompression.
+
+\section{Lossless Compression}
+
+\subsection{Integer Encoders}
+
+We are given an integer $x > 0$, and want an algorithm, called \textbf{code}, that represents $x$ in as few as possible bits. The output of the code is a bit-string called \textbf{codeword}, indicated as $C(x)$. A message $L = [x_1, \dots , x_n]$ consisting of $n$ integers can be coded as the concatenation of the codewords of each integer: $C(L) = [C(x_1), \dots, C(x_n)]$. The codes we will see next are \textbf{static}, meaning they always assign the same codeword to the same integer regardless of the message to be coded.
+
+Before applying any actual compression algorithm, the posting list can be preprocessed to reduce the value of the document IDs within them. Starting from the second element in the list, each docID is replaced by the difference between it and the previous one. This technique is called \textbf{d-gaps}.
+\begin{figure}[!ht]
+    \centering 
+    \includesvg[width=0.70\textwidth]{img/dgaps.svg} 
+    \caption{Example of d-gaps.}
+    \label{fig:dgaps}
+\end{figure}
+
+\paragraph{Binary Encoding}
+Binary encoding converts each number to a binary string of fixed length. Given $\textit{bin}(x)$ the function that returns the binary representation of $x$, the binary codewords are calculated as:
+\begin{equation*}
+    B(x) = \textit{bin}(x-1)
+\end{equation*}
+This way, each number can be represented using $|B(x)| = \ceil{log_2(x)}$ bits (the trailing zeros are removed). This major problem of this technique is that when the codewords are concatenated together to form the message, there is no way of telling where a codeword starts and where it ends: this leads to an ambiguous representation that does not have a unique decoding. The source of ambiguity is caused by the fact that the code $B()$ is not \textbf{prefix-free}: a code $C$ is said to be prefix-free if there are no $x, y$ s.t. $C(x) \geq C(y)$ for which $C(x) = C(y)[1 : |C(x)|]$. In other words, this compression can make it so some codewords are the prefix of other, longer codewords.
+
+\paragraph{Unary Encoding}
+Unary encoding produces sequences of bits set to 1, and uses 0 as the delimeter between each sequence. Each number is coded as:
+\begin{equation*}
+    U(x) = 1^{x-1}0
+\end{equation*}
+i.e., a sequence of $x$ 1s and a 0. Therefore, $|U(x)| = x$. This method is good only for small integers, since the size of the compressed output grows linearly with that of the uncompressed input.
+
+\paragraph{Elias Gamma and Delta Encoding}
+The key idea on which the Elias Gamma encoding is based is to use the binary representation of a number, and prepend the unary encoding of its length. The encoding function is as follows:
+\begin{equation*}
+    \gamma(x) = U(|\textit{bin}(x)|) \textit{bin}(x)[2:]
+\end{equation*}
+The first bit is removed from the binary representation, since it is always equal to 1. For example, $\gamma(4) = 11 \ 0 \ 00$. The first two bits mean that the following word is 3 bits long; the next 0 bit is a delimiter; the last two bits are the binary encoding of number 4 (note that the first 1 bit was removed from 100).
+
+Elias Delta encoding is built on top of Gamma. It still prepends the length of the binary representation, but it is further compressed using Elias Gamma. The code function is:
+\begin{equation*}
+    \delta(x) = \gamma(|\textit{bin}(x)|) \textit{bin}(x)[2:]
+\end{equation*}
+Using the same example as before, $\delta(4) = \gamma(3) 00 = 10 \ 1 \ 00$. The first two bits mean that the binary representation of 3 is long 2 bits, the next bit is the binary representation of 3 (without the leading 1), and finally, the last two bits are the binary representation of 4 (again without the leading 1).
+
+These methods can be extended one upon the other indefinitely; each further extension produces codewords that are shorter for bigger numbers, and longer for shorter numbers. Additionally, if a method chains $m$ compressions, we also need to do $m$ decompressions, thus increasing the time needed.
+
+\paragraph{Variable Byte Encoding}
+
+Variable Byte encoding produces codewords that are byte-aligned instead of bit-aligned; byte-slignment favors implementation simplicity and encoding/decoding speed at the cost of lower compression ratio. 
+
+This method uses the binary encoding of a number, and splits it into bytes; for each byte, the 7 least significant ones are used for the representation itself (\textbf{data bits}), while the most significant bit (\textbf{control bit}) is used to signal continuation (1) or end (0) of that representation. For example, $VB(4) = 0 \ 0000011$. It only takes one byte since it's small. On the other hand, a large number can require multiple bytes: $\textit{VB}(267) = 1 \ 0000010 \ 0 \ 0001010$.
+
+\section{Lossy Compression}
