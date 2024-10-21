@@ -46,7 +46,7 @@ Binary exponential search is similar to basic binary search, but uses a step siz
     \caption{Example of exponential binary search.}
     \label{fig:binary-search}
 \end{figure} \\
-Skip pointers can be placed to skip $k$ elements at once: each pointer is labeled with the value it points to. This way, until the searching algorithm encounters pointers with labels smaller or equal than the current ID, it can use the pointers instead of moving one element at a time. This algorithm is usable with compression (since entire blocks of ajdacent IDs can be compressed together).
+Skip pointers can be placed to skip $k$ elements at once: each pointer is labeled with the value it points to. This way, while the searching algorithm encounters pointers with labels smaller or equal than the current ID, it can use the pointers instead of moving one element at a time. This algorithm is usable with compression (since entire blocks of ajdacent IDs can be compressed together).
 \begin{figure}[!ht]
     \centering
     \includesvg[width=0.75\textwidth]{img/skip_pointers.svg}
@@ -84,7 +84,7 @@ WAND (\textbf{Weak AND}) is a pruning strategy that is guaranteed to compute the
 
 \paragraph{MaxScore}
 
-MaxScore uses the current threshold to split the posting lists into \textbf{essential} ones and \textbf{non-essential} ones. The lists are first sorted by their upper bounds, and then scanned in order; the first list whose upper bound is sufficiently high that, if summed to any lower bound, would exceed $\tau$ is considered essential, as well as all the others above it. The remaining lists, which have upper bounds so low that even if summed all together result in a value lower than $\tau$ are considered non-essential. During query processing, a document cannot be returned as a top-$k$ result if at least one of its terms is in an essential list.
+MaxScore uses the current threshold to split the posting lists into \textbf{essential} ones and \textbf{non-essential} ones. The lists are first sorted by their upper bounds, and then scanned in order; the first list whose upper bound is sufficiently high that, if summed to any lower bound, would exceed $\tau$ is considered essential, as well as all the others above it. The remaining lists, which have upper bounds so low that even if summed all together result in a value lower than $\tau$ are considered non-essential. During query processing, a document can only be returned as a top-$k$ result if at least one of its terms is in an essential list.
 
 \begin{figure}[!ht]
     \centering
