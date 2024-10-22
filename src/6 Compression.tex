@@ -31,14 +31,14 @@ Binary encoding converts each number to a binary string of fixed length. Given $
 \begin{equation*}
     B(x) = \textit{bin}(x-1)
 \end{equation*}
-This way, each number can be represented using $|B(x)| = \ceil{log_2(x)}$ bits (the trailing zeros are removed). This major problem of this technique is that when the codewords are concatenated together to form the message, there is no way of telling where a codeword starts and where it ends: this leads to an ambiguous representation that does not have a unique decoding. The source of ambiguity is caused by the fact that the code $B()$ is not \textbf{prefix-free}: a code $C$ is said to be prefix-free if there are no $x, y$ s.t. $C(x) \geq C(y)$ for which $C(x) = C(y)[1 : |C(x)|]$. In other words, this compression can make it so some codewords are the prefix of other, longer codewords.
+This way, each number can be represented using $|B(x)| = \ceil{log_2(x)}$ bits (the trailing zeros are removed). This major problem of this technique is that when the codewords are concatenated together to form the message, there is no way of telling where a codeword starts and where it ends: this leads to an ambiguous representation that does not have a unique decoding. The source of ambiguity is caused by the fact that the code $B()$ is not \textbf{prefix-free}: a code $C$ is said to be prefix-free if there are no $x, y$ s.t. $C(x) \leq C(y)$ for which $C(x) = C(y)[1 : |C(x)|]$. In other words, this compression can make it so that some codewords are the prefix of other, longer codewords.
 
 \paragraph{Unary Encoding}
 Unary encoding produces sequences of bits set to 1, and uses 0 as the delimeter between each sequence. Each number is coded as:
 \begin{equation*}
     U(x) = 1^{x-1}0
 \end{equation*}
-i.e., a sequence of $x$ 1s and a 0. Therefore, $|U(x)| = x$. This method is good only for small integers, since the size of the compressed output grows linearly with that of the uncompressed input.
+i.e., a sequence of $x-1$ 1s and a 0. Therefore, $|U(x)| = x$. This method is good only for small integers, since the size of the compressed output grows linearly with that of the uncompressed input.
 
 \paragraph{Elias Gamma and Delta Encoding}
 The key idea on which the Elias Gamma encoding is based is to use the binary representation of a number, and prepend the unary encoding of its length. The encoding function is as follows:
