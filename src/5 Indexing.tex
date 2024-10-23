@@ -39,7 +39,7 @@ The main operations on posting lists are:
 \end{itemize}
 This last operation allows us to skip some document IDs, without having to scan all the posting list; this is useful when the query to be processed is in AND mode. \texttt{NextGEQ} can be implemented in different ways. Common choices are Binary Exponential Search and skip pointers.
 
-Binary exponential search is similar to basic binary search, but uses a step size that doubles (i.e., increases exponentially) at each iteration, starting from stepsize 1. Assuming there are $t$ IDs greater of equal than the current, the algorithm runs in $\Theta (\log(\frac{n}{t}))$ time. In practice, it is not very efficient because of really small or really big skips. It also cannot be used with most compression algorithms, because they don't allow random access.
+Binary exponential search is similar to basic binary search, but uses a step size that doubles (i.e., increases exponentially) at each iteration, starting from stepsize 1. Assuming there are $t$ \texttt{NextGeq} calls on the same list, and $n$ elements in the list, the algorithm runs in $\Theta (\log(\frac{n}{t}))$ time; this estimate assumes that each call operates on a sub-list of size $\frac{n}{t}$. In practice, it is not very efficient because of really small or really big skips. It also cannot be used with most compression algorithms, because they don't allow random access.
 \begin{figure}[!ht]
     \centering
     \includesvg[width=0.75\textwidth]{img/binary_search_exp.svg}
