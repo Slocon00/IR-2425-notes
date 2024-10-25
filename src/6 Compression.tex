@@ -57,7 +57,7 @@ These methods can be extended one upon the other indefinitely; each further exte
 
 \paragraph{Variable Byte Encoding}
 
-Variable Byte encoding produces codewords that are byte-aligned instead of bit-aligned; byte-slignment favors implementation simplicity and encoding/decoding speed at the cost of lower compression ratio. 
+Variable Byte encoding produces codewords that are byte-aligned instead of bit-aligned; byte-alignment favors implementation simplicity and encoding/decoding speed at the cost of lower compression ratio. 
 
 This method uses the binary encoding of a number, and splits it into bytes; for each byte, the 7 least significant ones are used for the representation itself (\textbf{data bits}), while the most significant bit (\textbf{control bit}) is used to signal continuation (1) or end (0) of that representation. For example, $VB(4) = 0 \ 0000011$. It only takes one byte since it's small. On the other hand, a large number can require multiple bytes: $\textit{VB}(267) = 1 \ 0000010 \ 0 \ 0001010$.
 

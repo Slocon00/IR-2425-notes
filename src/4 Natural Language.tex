@@ -140,8 +140,8 @@ This is the most common weighting scheme in Information Retrieval. Scoring of a 
 There are many variants which differ in the way the components are weighted, or the way single terms in the query are weighted as well. \\
 A frequently used variant is \textbf{Best Match 25} (\textbf{BM25}), which calculates the score as:
 \begin{gather*}
-    \textit{score}(q,d) = \sum_{i=1}^n IDF(q_i) \cdot \frac{f(q_i, D) \cdot (k_1 + 1)}{f(q_i, D) + k_1 \cdot (1 - b + b \cdot \frac{|D|}{\textit{avgdl}})} \\
-    IDF(q_i) = \ln \left( \frac{N - n(q_i)  0.5}{n(q_i)  0.5} + 1 \right)
+    \textit{score}(q,d) = \sum_{i=1}^n \textit{idf}(q_i) \cdot \frac{tf(q_i, d) \cdot (k_1 + 1)}{tf(q_i, d) + k_1 \cdot (1 - b + b \cdot \frac{|D|}{\textit{avgdl}})} \\
+    \textit{idf}(q_i) = \ln \left( \frac{N - n(q_i) + 0.5}{n(q_i) + 0.5} + 1 \right)
 \end{gather*}
 where $|D|$ is the length of the document (how many words it contains), \textit{avgdl} is the average length of the documents in the collection, and $b, k_1$ are hyperparameters; $b \in [0,1]$ and $k_1 \in [1.2,2.0]$.
 
