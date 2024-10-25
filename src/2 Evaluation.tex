@@ -55,11 +55,11 @@ The two measures are then defined as:
 \end{itemize}
 The \textbf{F-Measure} (or \textbf{F-Score}) is another metric which condenses both precision and recall; it's calculated as the harmonic mean of the two:
 \begin{equation*}
-    F = 2 \frac{\textit{Prec.}\textit{Rec.}}{\textit{Prec.} + \textit{Rec.}}
+    F = \frac{1}{0.5 \textit{Prec.} + 0.5 \textit{Rec.}} = 2 \frac{\textit{Prec.} \cdot \textit{Rec.}}{\textit{Prec.} + \textit{Rec.}}
 \end{equation*}
 The harmonic mean is alway less or equal than the arithmetic/geometric mean: if the two values are very different, the harmonic mean is closer to their minimum. A weighted variant also exists; let $\alpha$ be the weight assigned to precision and $\beta$ the weight assigned to recall, such that $\alpha = 1/(1+\beta^2)$, \textbf{weighted F-Measure} is calculated as:
 \begin{equation*}
-    F_{\beta} = (\beta^2 + 1)\frac{\textit{Prec.}\textit{Rec.}}{\beta^2 \textit{Prec.} + \textit{Rec.}}
+    F_{\beta} = (\beta^2 + 1)\frac{\textit{Prec.} \cdot \textit{Rec.}}{\beta^2 \textit{Prec.} + \textit{Rec.}}
 \end{equation*}
 
 \subsubsection{Evaluation of Ranked Retrieval Results}
@@ -68,7 +68,7 @@ Precision, recall, and F-score are set-based methods, meaning that they are comp
 
 \paragraph{Mean Average Precision}
 
-Consider a set of documents returned by the SE, ordered by rank. Consider the indexes $K_1, \dots, K_R$ at which recall increases. Precision is calculated at each $K_i$, considering only the documents with lower indexes, and the average across all $K_i$ is calculated at the end. MAP is then calculated as the mean of the averages across multiple queries/rankings.
+Consider a set of documents in a run, classified as relevant or not relevant by the SE. Consider the indexes $K_1, \dots, K_R$ at which recall increases (i.e., the indexes of the actually relevant documents in that run). Precision is calculated at each $K_i$, considering only the documents with lower indexes, and the average across all $K_i$ is calculated at the end. MAP is then calculated as the mean of the averages across multiple queries/rankings, as a measure of the whole system given that benchmark.
 
 MAP is a macro-averaging measure; each query counts equally, even if only few documents are relevant for certain queries and many are relevant for other queries.
 
@@ -76,15 +76,18 @@ MAP is a macro-averaging measure; each query counts equally, even if only few do
 
 MAP takes into account all documents returned by the query. However, especially in Web searches, the number of retrieved documents may be unknown or very high; what truly matters is how any good results are found in the first few pages. To calculate Precision@K, we set a rank threshold $K$, we compute the number of relevant documents among the top $K$ ranking ones, and calculate P@K as:
 \begin{equation*}
-    P@K = \frac{\sum \textit{relevant documents in top-K}}{K}
+    P@K = \frac{\sum \textit{relevant and retrieved documents in top-K}}{K}
 \end{equation*}
-i.e., it is the fraction of relevant documents across the top-K retrieved ones. In a similar fashion, we can also calculate \textbf{Recall@K} as the fraction of relevant documents that are retrieved among the top-K.
+i.e., it is the fraction of relevant documents across the top-K retrieved ones (which are assumed to be relevant by the system). In a similar fashion, we also calculate \textbf{Recall@K} as the fraction of relevant documents that are found among the top-K:
+\begin{equation*}
+    R@K = \frac{\sum \textit{relevant and retrieved documents in top-K}}{\textit{\# of relevant documents}}
+\end{equation*}
 
 P@K by itself does not average very well over a set of queries, since the number of relevant documents for a query affects the result. Anyway, it (along with \textbf{MAP@K}) are largely used for Web searches and recommender systems.
 
 \paragraph{Mean Reciprocal Rank}
 
-Suppose there is only a single relevant document for a given query. A way to approximate the rank of the correct answer could be to consider the search duration for the user: if he/she takes a long time to find the answer its ranking is low, if instead he/she finds it quickly it is ranked high.
+Suppose there is only a single relevant document for a given query. A way to approximate the rank of the correct answer could be to consider the search duration for the user: if its ranking is low, he/she takes a long time to find the answer; if it is ranked high, he/she finds it quickly.
 
 Consider the rank position $\textit{rank}_i$ of the first relevant document returned by a query $q_i \in Q$. The \textbf{Reciprocal Rank} is calculated as:
 \begin{equation*}
@@ -96,7 +99,7 @@ MRR is the mean of the RRs across multiple queries.
 
 A popular measure used to evaluate web searches with non-binary relevance is \textbf{cumulative gain}, and in particular \textbf{Normalized Discounted Cumulative Gain} (\textbf{NDCG}). The idea is that the lower the rank of a relevant document is, the less it is useful for the user, since it is less likely to be visited.
 
-Discounted Cumulative Gain uses graded relevance (or \textbf{gain}) as a measure of usefulness; it is accumulated starting at the top of the ranking and may also be discounted (= reduced) at lower ranks. The typical discount is $\frac{1}{\log(\textit{rank})}$. The formula used to calculate DCG is:
+Discounted Cumulative Gain uses graded relevance (or \textbf{gain}) as a measure of usefulness; it is accumulated starting at the top of the ranking and may also be discounted (= reduced) at lower ranks. The typical discount is $\frac{1}{\log(\textit{rank})}$. Let $r_i$ be the relevancy of the document; then, DCG is calculated as:
 \begin{gather*}
     \textit{DCG} = r_1 + \frac{r_2}{\log_2 2} + \frac{r_3}{\log_2 3} + \dots + \frac{r_n}{\log_2 n} = \\
     = r_1 + \sum_{i=2}^n \frac{r_i}{\log_2 i}
