@@ -155,7 +155,6 @@ A first similarity measure is \textbf{Euclidean distance}. It is simple to calcu
 
 Ranking documents in decreasing order of the angle between query and document is equivalent to ranking them in increasing order of the cosine of the angle. This measure is called \textbf{cosine similarity}:
 \begin{gather*}
-    q \cdot d = \|q\| \cdot \|d\| \cdot \cos(\theta), \\
     \cos(\theta) = \frac{q \cdot d}{\|q\| \cdot \|d\|} = \frac{\sum_{i=1}^{|F|} q_i d_i}{\sqrt{\sum_{i=1}^{|F|} q_i^2} \cdot \sqrt{\sum_{i=1}^{|F|} d_i^2}}
 \end{gather*}
 Note that here vectors are length-normalized by dividing each for its L2 norm. In the previous example, $d$ and $d'$ would end up having the same lenght after being normalized, so their cosine similarity would be 1 (the maximum possible value).
