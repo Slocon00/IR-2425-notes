@@ -61,4 +61,85 @@ Variable Byte encoding produces codewords that are byte-aligned instead of bit-a
 
 This method uses the binary encoding of a number, and splits it into bytes; for each byte, the 7 least significant ones are used for the representation itself (\textbf{data bits}), while the most significant bit (\textbf{control bit}) is used to signal continuation (1) or end (0) of that representation. For example, $VB(4) = 0 \ 0000011$. It only takes one byte since it's small. On the other hand, a large number can require multiple bytes: $\textit{VB}(267) = 1 \ 0000010 \ 0 \ 0001010$.
 
-\section{Lossy Compression}
+\subsection{List Encoders}
+
+List encoders are used to compress an entire integer list instead of individual integers. The goal is to compress a list $L = [x_1, \dots, x_n]$ of strictly increasing integers, where $x_1 > 0$ and $x_n \leq U$. $U$ is called universe size. Some compressors operate directly on the list, while others first transform the list into a sequence of d-gaps.
+
+As a way to analyze the space effectiveness of the compressors is to compare them to the combinatorial lower bound, meaning the minimum number of bits needed to represent a list of $n$ strictly increasing integers drawn out of a universe of size $U \geq n$. There are $\binom{U}{n}$ ways of randomly choosing $n$ distinct numbers out of $U$ possibilities; therefore, we need at least $\ceil{\log_2 \binom{U}{n}}$ bits. By Stirling's approximation, we can estimate the lower bound as:
+\begin{equation*}
+    \ceil{\log_2 \binom{U}{n}} \approx n (\log_2 \left(\frac{U}{n}\right) + \log_2 e) \approx n \log_2 \left(\frac{U}{n}\right) + 1.44 n \,.
+\end{equation*}
+In practice, however, many compressors actually take less space than this lower bound. This is because the lower bound assumes that the integers are truly randomly distributed, but in real applications, lists of document IDs tend to contain many clusters of close integers, and this closeness can be exploited. For example, in a inverted index built for a search engine, the word ``Pisa'' may contain a lot of IDs of documents relating to the University of Pisa, which are likely to be all close to each other.
+
+\paragraph{Simple9 and Simple16}
+
+These two methods are based on the same principle: pack as many integers as possible in a memory word (32 or 64 bits long). Both operate on d-gaps. Simple9 adopts 32-bit words and has 9 ``configurations'', while Simple16 has 16 of them.
+
+Simple 9 dedicates 4 bits to the \textbf{selector code} and the remaining 28 for the data. The selector indicates how many elements are packed in the segment using equally sized codewords. The possible configurations are described in the table below:
+
+\begin{table}[!ht]
+    \centering
+    \begin{tabular}{c|c|c}
+        \textbf{Selector} & \textbf{Integers} & \textbf{Bits per Integer} \\
+        \hline
+        \hline
+        0000 & 28 & 1 \\
+        0001 & 14 & 2 \\
+        0010 & 9 & 3 \\
+        0011 & 7 & 4 \\
+        0100 & 5 & 5 \\
+        0101 & 4 & 7 \\
+        0110 & 3 & 9 \\
+        0111 & 2 & 14 \\
+        1000 & 1 & 28 \\    
+    \end{tabular}
+    \caption{Simple9 selector codes.}
+    \label{tab:simple9}
+\end{table}
+For example, the list $L = 1^{33} \ 3^5 \ 2^5 \ 1^2 \ 7^6$ is encoded with three 32-bit words as $1^{28} \ - \ 1^5 \ 3^5 \ 2^4 \ - \ 2^1 \ 1^2 \ 7^6$. The very first block has selector $0000$, since the only integer present is 1; the second block has selector $0001$, since we need two bits to represent 3 and 2; the last block has selector $0010$, since we need three bits to represent 7.
+
+\paragraph{Patched Frame of Reference}
+
+A big limitation of block-based strategy is their inefficiency when a block contains only a single large value, because it forces a large amount of bits to be used for the codeword: in the example above, had the last block contained the number 512 instead of 7, it would have forced the use of 9 bits for any other number in the same block (which, for small numbers such as 1 or 2, would have big a huge waste of space).
+
+Patched Frame of Reference (PFor) tries to solve this issue by choosing a base $b$ and a value $k > 0$ for the universe representation of the block, such that a large percentage (e.g., 90\%) of the block's integers fall in the range $[b, b+ 2^k - 1]$, i.e., they can be represented using $k$ bits. Any integer that does not fit into $k$ bits is treated as an \textbf{exception} and encoded in a separate array using some other compression algorithm.
+
+\paragraph{Binary Interpolative Coding}
+
+Suppose we have a list of integers $L$ such that $l \leq L[1]$ and $L[n] \leq h$. Then, we can encode the element in the middle of the sequence, $L[m]$ (where $m = \ceil{n/2}$), knowing it is in the range $[l,h]$. Instead of encoding this number as it is, we encode $L[m] - l$ using $\ceil{\log_2(h-l)}$ bits. For example, the list is $L = [2, 3, 5, 7, 9, 10, 13]$, then $l = 2$ and $h = 13$. The middle element is 7, and we can encode it as $7 - 2 = 5$. If we apply the same encoding to the two halves $L[1:m-1]$ and $L[m+1:n]$, we now have updated knowledge of who the upper and lower bounds are for each half. In the example, the two sublists are $L_1 = [2, 3, 5]$ ($l_1 = 2, h_1 = 6$) and $L_2 = [9, 10, 13]$ ($l_2 = 8, h_2 = 13$).
+
+The crucial property of this method is that whenever the length $r$ of the interval is equal to $h - l$, then a run of $r$ consecutive integers can be detected and no bits are necessary: for this reason, binary interpolative coding is particularly effective on highly clustered sequences.
+
+\paragraph{Elias-Fano Encoding}
+
+Let $S(n,U)$ be a sorted sequence of $n$ integers drawn from a universe of size $U$. Each integer $S[i]$ is converted in its binary representation $\textit{bin}(S[i])$, which takes $\ceil{\log_2 U}$ bits; this representation is split in two parts:
+\begin{itemize}
+    \item The \textbf{low part} containing the low bits, which are the rightmost $l = \ceil{\log_2(U/n)}$ bits;
+    \item The \textbf{high part} containing the high bits, which are the remaining $h = \ceil{\log_2 U} - l$ bits.
+\end{itemize}
+\begin{figure}[!ht]
+    \centering
+    \includesvg[width=0.70\textwidth]{img/elias_fano_split.svg}
+    \caption{Example array split into high and low parts.}
+    \label{fig:elias-fano-split}
+\end{figure} 
+The encoding of $S(n,U)$ is given by the encoding of the high and low parts of all the integers. The low parts of the integers, $[l_1, \dots, l_n]$, are written as they are in a bitvector $L$ of $n \ceil{\log_2 (U/n)}$ bits. The high parts $[h_1, \dots, h_n]$ are also represented with a bitvector, of $n + 2^{\floor{\log_2 n}} \leq 2n$ bits. We start from a 0-valued bitvector $H$, and set the bit in position $h_i + i, \ \forall i = 1, \dots, n$. The end result is a vector that contains the cardinalities of the ``buckets'' in which the bits of the high part can be grouped into. This vector is composed of $\leq 2n$ bits because it contains a 1 for each number in the sequence, and no more than a 0 for each possible bucket (at most $n$).
+\begin{figure}[H]
+    \centering
+    \includesvg[width=0.70\textwidth]{img/elias_fano_H.svg}
+    \caption{Vector H obtained from the example above. Note how the first bucket has two elements, the second also has two elements, the third has one element, and so on: these cardinalities are stored in sequence, separated by one or more 0s.}
+    \label{fig:elias-fano-H}
+\end{figure}
+\noindent Finally, the Elias-Fano representation of $S$ is the concatenation of $H$ and $L$, and overall takes
+\begin{equation*}
+    EF(S(n,U)) \leq n \ceil{\log_2 (U/n)} + 2n
+\end{equation*}
+bits.
+
+Elias-Fano supports random access without decompression. To access an element, we want to implement the operation \texttt{Access}$(i)$ which returns $S[i]$. We assume we can efficiently use the \texttt{Select$_0$}$(i)$ and  \texttt{Select$_1$}$(i)$ primitives, which return, respectively, the position of the $i^{th}$ 0 and 1 in a bitvector. Using \texttt{Select$_1$}$(i)$, it is possible to implement \texttt{Access}$(i)$ in $O(1)$ time. To reconstruct a number, we need to re-link the two halves of its binary representation: the low part is easily retrieved, as it is the range of bits $L[(i-1) * l + 1, i * l]$. The retrieval of the high bits requires a few steps; the bitvector $H$ tells us how many integers share the same high part and fall in the same bucket, expressed in unary. To find exactly who are these bits for a given position in the original sequence, we simply need to know how many 0s are encountered before the $i^{th}$ 1 in $H$; the position of this bit is retrieved using \texttt{Select$_1$}$(i)$. If we remove $i$ from that position (essentially doing the inverse operation used to build the bitvector), we find the original value of the high bits. By concatenating them to the low bits found before, the whole number is reconstructed.
+
+As an example, consider Figures \ref{fig:elias-fano-split} and \ref{fig:elias-fano-H}. If we wanted to find the $4^{th}$ element of the sequence, we would first look at the low bits, stored as they are, reading from position $7$ to $8$ (finding bits $11$). Then, we look at $H$, and find the position of the $4^{th}$ 1, which is 5. We subtract 4 from this position, obtaining 1, i.e., $001$ in bit representation. Finally, we concatenate the two halves and find that the number in the $4^{th}$ position is $00111 = 7$.
+
+\paragraph{Partitioned Elias-Fano Encoding}
+
+As mentioned above in PFor, it's common for posting lists to have clusters of consecutive document IDs. Elias-Fano does not exploit the presence of these clusters, requiring the same amount of bits to encode a list regardless of its structure. Partitioned Elias-Fano encoding is a variant that first partitions each posting list into chunks of variable length, and then separately encodes each chunk using Elias-Fano. The optimal partitioning that minimizes the size of compressed data can be found in linear time uning a dynamic programming algorithm.
