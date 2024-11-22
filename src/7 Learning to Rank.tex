@@ -6,7 +6,7 @@ Modern search engines do in fact consider several statistics that are not limite
 
 \section{Machine Learning Basics}
 
-\textbf{Machine Learning} is a filed of computer science that deals with the study and usage of statistical methods to enable computers to learn from data without being explicitly programmed to do so. After learning, the computer can make predictions, decisions, or generate new data based on the patterns it found in the input data. There exist many \textbf{models} in machine learning, each of which ``learns'' from data in a different way. 
+\textbf{Machine Learning} is a field of computer science that deals with the study and usage of statistical methods to enable computers to learn from data without being explicitly programmed to do so. After learning, the computer can make predictions, decisions, or generate new data based on the patterns it found in the input data. There exist many \textbf{models} in machine learning, each of which ``learns'' from data differently. 
 
 The input data forms the \textbf{training set}; any data used to test the performance of the model forms the \textbf{test set}. Each item in a dataset is called \textbf{instance} (or example, pattern); each instance is described by a set of \textbf{features} (also called attributes). In a tabular dataset, typically each row is an instance, and each column is a feature.
 \\
@@ -59,7 +59,7 @@ A simple model to represent the relationship between the input and output featur
 \begin{equation*}
     \textit{score}(d,q) = \textit{score}(\alpha, \omega) = w_1 \cdot \alpha + w_2 \cdot \omega + b
 \end{equation*}
-The classifier is trained to find the values of $w_1$, $w_2$, and $b$, such that if $\textit{score}(d,q) > b$, the document is classified as relevant, otherwise it is non-relevant. If we interpret the features of the instances as coordinates in a 2D space, we can interpret the function found by the model as a line (or in general, of a $n$-dimensional hyperplane) that separates the relevant documents from the non-relevant ones.
+The classifier is trained to find the values of $w_1$, $w_2$, and $b$, such that if $\textit{score}(d,q) > b$, the document is classified as relevant, otherwise it is non-relevant. If we interpret the features of the instances as coordinates in a 2D space, we can interpret the function found by the model as a line (or in general, of an $n$-dimensional hyperplane) that separates the relevant documents from the non-relevant ones.
 \begin{figure}[H]
     \centering
     \includesvg[width=0.5\textwidth]{img/linear_model.svg}
@@ -107,7 +107,7 @@ Depending on how input data is represented, we can distinguish between three mai
 \end{itemize}
 
 \paragraph{Pointwise Approach}
-With pointwise methods, the idea is to reduce the problem to a simple classification,  regression , or ordinal regression task. The model is trained to predict the degree of relevance of each document with respect to a given query, independently of others. Obviously, since there is no actual ranking to be learned or predicted, this approach is not sufficient for most applications.
+With pointwise methods, the idea is to reduce the problem to a simple classification,  regression, or ordinal regression task. The model is trained to predict the degree of relevance of each document with respect to a given query, independently of others. Obviously, since there is no actual ranking to be learned or predicted, this approach is not sufficient for most applications.
 
 \paragraph{Pairwise Approach}
 Pairwise methods models the target function as a function of a query and a pair of documents, returning a score that indicates how much more relevant one document is compared to the other. The error can then be calculated as how correctly the ideal ordering of any two pair of documents is predicted.
@@ -190,11 +190,44 @@ The training algorithm is as follows:
     \begin{equation*}
         F_m(x) = F_{m-1}(x) + \nu \sum_{j=1}^J \gamma_{jm} \cdot \mathds{1}_{x \in R_{jm}}
     \end{equation*}
-    ($\mathds{1}$ is a indicator function). $\nu$ is a regularization hyperparameter that controls how much the output of the new tree corrects the previous prediction, used to avoid overfitting.
+    ($\mathds{1}$ is an indicator function). $\nu$ is a regularization hyperparameter that controls how much the output of the new tree corrects the previous prediction, used to avoid overfitting.
 \end{enumerate}
 
 \subsection{XGBoost}
 
 \textbf{XGBoost} (\textbf{eXtreme Gradient Boosting}) is an implementation of gradient boosting machines that uses additional regularization techniques. Key features are the ability to scale with the amount of training data, parallel processing to find the best split point at each step, and cache aware access to the data.
 
+The algorithm is similar to the one described above, but with some differences:
+\begin{enumerate}
+    \item It starts by finding the initial function $F_0(x)$. This implementation provides methods to estimate an optimal starting value, or to set a specific value.
+    
+    \item The residual error between each instance's target value and the current initial prediction is calculated.
+
+    \item The \textbf{similarity score} of all instances is calculated as:
+    \begin{equation*}
+        \textit{score} = \frac{(\sum_i^n \textit{Residual}_i)^2}{n + \lambda}
+    \end{equation*}
+    where $n$ is the number of instances in the dataset.
+
+    \item All possible splits across all features are evaluated to find the best one. To do so, the \textbf{gain} of a split is calculated as the comparison between the similarity score of the new regions, and that of the original region of the input space:
+    \begin{equation*}
+        \textit{gain}_{split} = \textit{score}_{\textit{left}} + \textit{score}_{\textit{right}} - \textit{score}_{\textit{parent}} - \gamma
+    \end{equation*}
+    This gain is an indication of how much better the split separates the residuals compared to the unsplit data: if the gain is positive, the split is better, if it is negative, keeping the data as is is better. $\gamma$ is a regularization term that controls the minimum gain required to accept a split.
+
+    \item The data is updated replacing each instance's residual with the prediction done by the tree, which is going to be the mean of the residuals in the same leaf. The algorithm repeats steps 3-5 until the desired number of trees is reached.
+\end{enumerate}
+
+The computational time required for a split is $\Theta (\# \text{features} \times \# \text{data points})$. An alternative version of the algorithm exists, useful especially when the dataset is too large to fit in memory. For each feature, this version proposes a set of possible splits estimated based on the percentiles of the feature's empirical distribution, and then aggregates the values into bins with those candidates as extremes. The best split is found by considering the statistics of these aggregated bins. There are two variants: a global one, which bins the data once at the beginning of the training of the tree, and reuses that binning for all subsequent splits, and a local one, which recalculates the bins at each split. The computational time for a split required by this approximate version is $\Theta (\# \text{features} \times \# \text{bins})$.
+
 \subsection{LightGBM}
+
+\textbf{LightGBM} is another popular implementation of gradient boosting machines proposed by Microsoft as an improvement over XGBoost. It also uses histogram-based split finding like XGBoost, but tries to overcome the cost of histogram building and updating by using two key techniques:
+\begin{itemize}
+    \item \textbf{Gradient-based One-Side Sampling} (\textbf{GOSS}): data points are weighted based on the gradient of the loss function calculated for each data point, focusing on those with larger gradients (since those with smaller gradients are already predicted with a small enough error).
+
+    \item \textbf{Exclusive Feature Bundling} (\textbf{EFB}): since the feature space is ofter very sparse in large datasets, features that are mutually exclusive, i.e., are never both non-zero simultaneously, are grouped together to reduce the dimensionality of the data. This way, the time reuired to find a split is reduced to $\Theta (\# \text{bundles} \times \# \text{bins})$.
+\end{itemize}
+
+\subsection{Efficient Training of Ensembles of Trees}
+
