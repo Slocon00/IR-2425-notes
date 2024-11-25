@@ -226,8 +226,27 @@ The computational time required for a split is $\Theta (\# \text{features} \time
 \begin{itemize}
     \item \textbf{Gradient-based One-Side Sampling} (\textbf{GOSS}): data points are weighted based on the gradient of the loss function calculated for each data point, focusing on those with larger gradients (since those with smaller gradients are already predicted with a small enough error).
 
-    \item \textbf{Exclusive Feature Bundling} (\textbf{EFB}): since the feature space is ofter very sparse in large datasets, features that are mutually exclusive, i.e., are never both non-zero simultaneously, are grouped together to reduce the dimensionality of the data. This way, the time reuired to find a split is reduced to $\Theta (\# \text{bundles} \times \# \text{bins})$.
+    \item \textbf{Exclusive Feature Bundling} (\textbf{EFB}): since the feature space is ofter very sparse in large datasets, features that are mutually exclusive, i.e., are never both non-zero simultaneously, are grouped together to reduce the dimensionality of the data. This way, the time reuired to find a split is reduced to $\Theta (\# \text{bundles} \times \# \text{bins})$.
 \end{itemize}
 
 \subsection{Efficient Training of Ensembles of Trees}
 
+Once the ensemble is trained, it can be used to score documents. Each query-document feature vector must traverse every tree in the ensemble to find the score each of them assigns it. The naive approach is to model the tree using structs: each node is a struct with a feature id, a threshold, and the pointers to the left and right children. Leaves are special nodes, and only contain scores. The problem with this approach is the high branch misprediction rate, since there is no way of telling which child node to visit at each level. The goal of a good algorithm is to try to prune as many branches unpredictable branches as possible to reduce the misprediction rate. Another problem is low cache hit ratio, since accesses jump around the memory every time a node is visited. An alternative is to not explicitly store the tree, and instead hardcode the nodes as a set of nested if-then-else blocks. The compiler may see regularities in the code, and optimize it accordingly, but presents the same problems as before.
+
+\textbf{VPred} is a technique that mitigates the problem of branch misprediction. For every possible depth of the branches of the trees, we define a function that can traverse that depth. The tree itself is represented as a table. Starting from the root node, a variable stores the current node ID and compares the input vector's feature value with the threshold of the current node. The comparison is done with a $>$ operator, and returns a boolean result: this result is then used to index the table to directly access the correct child (0 is left, 1 is right). For a leaf node, the table lists its own ID as both left and right children, so when it's reached, the algorithm simply stays in the same node until it eventually stops (i.e., when the number of steps is equal to the depth of the tree). This means that no matter at what depth the final leaf is, the function always costs the depth of the entire tree. It also does not solve the problem of low cache hit ratio.
+
+\textbf{QuickScorer} is a ranking algorithm that uses an alternative way to traverse a single tree, and can process the entire forest at once. Given the feature set of a specific document, each node in a tree cane be either ``True'' or ``False'' depending on whether the features of the document are smaller or greater than its threshold. A True node will make the evaluation of the document visit its left child, while a False node will make it visit the right child. Each node is then assigned a binary mask, with one bit per leaf in the tree. This mask is applied if the node is False to exclude unreachable leaves: the mask will have set to 0 all the bits corresponding to the leaves in the node's left child, and 1 in the remaining positions.
+\begin{figure}[H]
+    \centering
+    \includesvg[width=0.8\textwidth]{img/QuickScorer1.svg}
+    \caption{Example of a tree where its nodes have been labeled as True (green) or False (red). Each node is also accompanied by its binary mask (note that the mask is built assuming the node is False).}
+\end{figure}
+After a tree's nodes are actually labeled as True and False by compating a document's feature set, the binary masks associated to the False nodes are isolated, and combined together with an AND operation. In the example in the figure above, the final combined mask would be ``01101''. The exit leaf (the one containing the final score) is the one corresponding to the leftmost bit set to 1 in this final bitmask: for the example, the exit leaf is the second one (with a score of -0.7).
+
+The main issue is how to efficently calculate the bitmaps to predict the exit leaf for every tree in the ensemble. QuickScorer does this by grouping up all the threshold values in all the trees by feature, sorting them in increasing order (so first all the tresholds for feature 1 from smallest to largest, then those for feature 2 from smallest to largest, and so on). Using this sorted vector, the document can be compared against all the thresholds for a single feature at once, and specifically, after one threshold for a feature is found to be in a True node, all the following thresholds are also automatically set to True nodes. A separate vector is kept to track which threshold belongs to which tree.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/QuickScorer2.png}
+    \caption{Data structures used to store the thresholds and the tree IDs.}
+\end{figure}

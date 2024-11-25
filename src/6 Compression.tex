@@ -69,7 +69,7 @@ As a way to analyze the space effectiveness of the compressors is to compare the
 \begin{equation*}
     \ceil{\log_2 \binom{U}{n}} \approx n (\log_2 \left(\frac{U}{n}\right) + \log_2 e) \approx n \log_2 \left(\frac{U}{n}\right) + 1.44 n \,.
 \end{equation*}
-In practice, however, many compressors actually take less space than this lower bound. This is because the lower bound assumes that the integers are truly randomly distributed, but in real applications, lists of document IDs tend to contain many clusters of close integers, and this closeness can be exploited. For example, in a inverted index built for a search engine, the word ``Pisa'' may contain a lot of IDs of documents relating to the University of Pisa, which are likely to be all close to each other.
+In practice, however, many compressors actually take less space than this lower bound. This is because the lower bound assumes that the integers are truly randomly distributed, but in real applications, lists of document IDs tend to contain many clusters of close integers, and this closeness can be exploited. For example, in an inverted index built for a search engine, the word ``Pisa'' may contain a lot of IDs of documents relating to the University of Pisa, which are likely to be all close to each other.
 
 \paragraph{Simple9 and Simple16}
 
