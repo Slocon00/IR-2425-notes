@@ -114,9 +114,9 @@ Pairwise methods models the target function as a function of a query and a pair 
 
 An example of pairwise method is \textbf{RankNet}. Given two documents, $d_i$ and $d_j$, it models the probability that $d_i$ is more relevant than $d_j$ using the logistic function:
 \begin{equation*}
-    P_{ij} = \frac{e^{o_{ij}}}{1 + e^{o_ij}} = \frac{1}{1 + e^{-o_{ij}}}
+    P_{ij} = \frac{e^{o_{ij}}}{1 + e^{o_{ij}}} = \frac{1}{1 + e^{-o_{ij}}}
 \end{equation*}
-As a loss function, it uses the cross-entropy loss:
+where $o_{ij}$ is the difference between the outputs assigned to $d_i$ and $d_j$. As a loss function, it uses the cross-entropy loss:
 \begin{equation*}
     C_{ij} = - T_{ij} \log P_{ij} - (1 - T_{ij}) \log (1 - P_{ij})
 \end{equation*}

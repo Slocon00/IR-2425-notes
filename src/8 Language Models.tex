@@ -1,0 +1,43 @@
+\chapter{Language Models}
+
+Language models are probailistic models of natural language, and are used in many applications such as speech recognition, machine translation, or text generation. In information retrieval, they are used to estimate the probability of a document being relevant to a query by comparing the words contained in both. Language models can be classified in two categories: pure statistical models, and neural models.
+
+\section{Statistical Language Models}
+A \textbf{statistical language model} is a probability distribution over sequences of words. Given a sequence of words $w_1 w_2 \dots w_n$, we can compute the probability of the sequence as:
+\begin{equation*}
+    P(w_1 w_2 \dots w_n) = P(w_1) P(w_2 | w_1) P(w_3 | w_1 w_2) \dots P(w_n | w_1 w_2 \dots w_{n-1})
+\end{equation*}
+This formula can model any language, but is too impractical to use as it would require to learn the probability of any possible sequence in the language. In practice, language models make assumptions on the probability distribution so that it can be approximated from a relatively limited amount of data; depending on how strong the assumption is, the model will be more or less complex.
+
+A \textbf{unigram model} assumes statistical independence between all words, so that the probability of a sequence is simply calculated as:
+\begin{equation*}
+    P(d) = P(w_1 w_2 \dots w_n) = P(w_1) P(w_2) \dots P(w_n) = \prod_i^n P(w_i)
+\end{equation*}
+Sometimes, the logarithm of the probabilities are used instead, transforming the product into a sum:
+\begin{equation*}
+    \log(\prod_i^n P(w_i)) = \sum_i^n \log(P(w_i))
+\end{equation*}
+A bayesian classifier that uses this model is also called ``naive'', since it ``naively'' assumes that all words are independent (while, in reality, they are not).
+
+A \textbf{bigram model} assumes statistical dependence of a word from the previous one:
+\begin{equation*}
+    P(d) = P(w_1 w_2 \dots w_n) = P(w_1) P(w_2 | w_1) P(w_3 | w_2) \dots P(w_n | w_{n-1}) = \prod_i^n P(w_i | w_{i-1})
+\end{equation*}
+This model is already capable of capturing many language regularities (e.g., verbs followed by nouns or vice-versa, names and expressions formed by multiple words such as ``New York'', ``user friendly'', ``machine learning'', etc.). In general, a \textbf{$\mathbf{n}$-gram model} assumes that the probability of a word depends on the previous $n-1$ words, so the longer the $n$-gram the better the semantic of the language is captured; on the other hand, the model also becomes less statistical significant, as it requires more data to memorize the possible $n$-grams.
+
+\section{Neural Models}
+A \textbf{neural model} is a language model that uses neural networks to learn the probability distribution of a language.
+
+\textbf{Word2Vec} is a group of models used to obtain word embeddings, i.e., vector representation of words. These embeddings capture semantic similarity between words, as words that appear in similar contexts will be mapped to similar vectors (in terms of cosine similarity). To capture context, a window of $n$ words is used, where $n$ ranges between 2 and 5 words before and after the central word: longer windows capture more semantic, but less syntax. Even though they solve a prediction task, these models can be trained on any text without any supervision, and are capable of capturing the specific semantic of the source on which they are trained.
+
+Word2Vec can use two architectures: \textbf{CBOW} (\textbf{Continuous Bag Of Words}), or \textbf{skip-gram}. With CBOW, the task is to predict a word given a context (the model is given a sequence, returns a word), while with skip-gram the task is to predict the context given a word (the model is given a word, returns a sequence). Both models are implemented as a two-layer linear neural network where input and output words are represented using one-hot-encoding, and then respectively encoded/decoded into/from a dense representation.
+
+In CBOW, the first layer takes as input the sparse representation of the hot-one-encoded words, produces an abstract representation of the context in the second layer, and finally the output layer converts the abstract representation into a probability vector, where each component represents the probability of a word being in context. The rows produced by the first layer are the embeddings, which are fit during the training process. To test the quality of the embeddings, a test set was developed made of semantic and syntactic relations.
+
+\textbf{FastText} extends Word2Vec by also considering $n$-grams of words. A single word is embedded as the sum of the embeddings of the word itself (as calculated in Word2Vec), and the embeddings of its $n$-grams. For example, the word ``goodbye'' can be represented by the set of its $n$-grams: ``go'', ``goo'', ``ood'', ``odb'', ``dby'', ``bye'', ``ye''. All the $n$-grams are embedded separately, and the same $n$-gram may contribute to the embedding of multiple words. Also, including information about sub-words allows the model to predict the embedding of words it has never seen before (called \textbf{out-of-vocabulary}/\textbf{OOV} words), or to handle misspelled words.
+
+\textbf{Doc2Vec} is an extension of Word2Vec that models the embedding of entire documents. The basic architecture of the model is the same as Word2Vec, but the input is enriched with additional features that identify the document from which the word sequence is from: the output of the first layer is an abstract representation of the words and the identifiers, projected in the same space.
+
+In general, an \textbf{embedding layer} in a neural network is the first layer of the network, and is used to convert the input data into a dense representation specifically designed for the task; it can be initialized with random weights and gradually adjusted during the training phase, or it can be initialized with pre-trained embeddings that are kept fixed (so not modified by the training). Since neural networks process data in batches, and all batches must be of the same length, a \textbf{padding word} is used to fill shorter sequences, adding it before or after its words to reach the desired length.
+
+The latest models are based on deep learning techniques, such as bi-directional character level Long Short Term Memory (LSTM), and multi-headed self-attention (a technique that weighs how important a word is in a sentence based on semantic). These models are cabable of capturing a lot of information about language, but are also very complex and may have up to billions of parameters.
