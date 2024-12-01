@@ -1,0 +1,37 @@
+\chapter{Efficient k-Approsimated Nearest Neighbors Retrieval}
+
+K-Nearest Neighbors (k-NN) is an algorithm used to solve classification and regression tasks. Given a set of examples, the algorithm calculates the output of a new instance by finding the $k$ nearest examples and aggregating their target values: the output is the majority class in the case of classification, or the average value in the case of regression. In information retrieval, k-NN can be used on embedded data to find the most similar documents to a query. Formally, the task is defined as follows: given a set of $n$ document embeddings $D = \{d_1, d_2, \dots,d_n\}$, and given a query $q$, find
+\begin{equation*}
+    \arg\min_{d_i \in D}^{(k)} s(q, d_i) 
+\end{equation*}
+where $s(q,v)$ is a distance measure (e.g., euclidean distance, inverse of the dot product). Those $k$ documents can be then returned as a result to the user as the most relevant.
+
+\sloppy
+In practice, real applications use a variant called \textbf{k-Approximated Nearest Neighbors} (\textbf{k-ANN}) for two reasons: exact k-NN is computationally expensive, since the number of documents in collections can be very large, and it suffers from the \textbf{``curse of dimensionality''}, a phenomenon where as the number of dimensions in the data increases, distances become less and less meaningful. To illustrate the problem, consider the following examples. First, consider a 1-dimensional space of embeddings with $n$ points. Given a query, the 1-nearest neighbor can be calculated very easily: if euclidean distance is used as a measure, then the document in question is always either the predecessor or the successor of the query, which can be found with a binary search in $\Theta(\log n)$ time. If dot product is used, then the document is either the smallest (if the document has a negative value), or the maximum (if the query is positive).
+\clearpage
+\begin{figure}[t]
+    \centering
+    \includesvg[width=0.9\textwidth]{img/knn_1d.svg}
+    \caption{Example of k-NN in a 1-dimensional space.}
+\end{figure}
+\fussy
+In a 2-dimensional space, the problem becomes more complex. Given the document embeddings, the solution is to partition the space using a \textbf{Voronoi diagram}: the space is divided into a number of regions, each centered around a document, so that all points falling in the same region are closer to the center than to ani other document. If there are $n$ points, the total number of vertices and edges in the diagram is $\Theta(n)$. Then, to find the nearest neighbor, the algorithm must find the region in which the embedding of the query falls into: this can be done in $\Theta(\log n)$ time, and linear space.
+
+Now, let's generalize to a $d$-dimensional space. The Voronoi diagram has size $O(n^{d/2})$. For the search, there are two alternatives: either the algorithm performs a point query, in $\Theta((d + \log n)^c)$ time and $\Theta(n^d)$ space, or a linear scan, in $\Theta(nd)$ time and linear space. Either way, the complexity grows with the number of dimensions, and the algorithm becomes impractical for high-dimensional data.
+
+Possible strategies for k-ANN retrieval are tree-based solutions, clustering-based solutions, hashing-based solutions, and proximity graphs. The next section will focus on the latter, as they are the state-of-the-art solutions for high-dimensional data.
+
+\section{Proximity Graphs and Hierarchical Navigable Small World}
+
+A proximity graph is a graph where each node is a document and each edge between two nodes represents some relationship of proximity between the documents they represent. \textbf{Navigable Small World} (\textbf{NSW}) graphs are a type of proximity graph characterized by a high clustering coefficient and low distances between nodes. Given a set of points, the NSW graph is constructed by consecutively adding elements extracted at random, connecting them to the $m$ closest neighbors chosen from the points already present in the graph. Once the graph is constructed, the algorithm can find the nearest neigbor(s) of a query by navigating the graph with a greedy search algorithm: the search starts from a random entry node, and, at each step, moves to the neighbor that is closest to the query. The search stops when the nearest neighbor is found (meaning that the distance between the current node and the query is smaller than the distance with its neighbors), or when none of the current node's neighbors are closer to the query than the current node itself.
+
+An improvement over NSW is \textbf{Hierarchical Navigable Small World} (\textbf{HNSW}) graphs, which introduce a hierarchy of nodes to increase the chances of success and potentially speed up the search. As the graph is being constructed, each new node is also assigned a layer, randomly chosen from a scale with an exponentially deacaying probability distribution (the higher the layer, the lower the chances of being chosen). A proximity graph is constructed at each layer, and any node in a layer $l$ is also an entry point for the graph in the layer $l-1$, allowing vertical movement across the hierarchy. The greedy search algorithm is modified to start from an element in the top layer, and gradually move closer and closer to the query by navigating the graph either in the current layer, or by moving to a lower layer when appropriate.
+\begin{figure}[h]
+    \centering
+    \includesvg[width=0.9\textwidth]{img/hnsw.svg}
+    \caption{Example of a greedy search in 1-dimensional data to find the predecessor of the query using a HNSW graph. The blue arrows and nodes represent the direction of the search, the red nodes are the neighbors that are larger than the query, and the green node is the predecessor.}
+\end{figure}
+
+\section{Product Quantization}
+
+Product quantization is a lossy compression technique often used together with HNSW graphs to reduce the space usage of the data and make distance computations faster. This technique breaks up a $d$-dimensional vector into $m$ chunks of size $d/m$ each, and replaces each chunk with a code of 1 byte. 
