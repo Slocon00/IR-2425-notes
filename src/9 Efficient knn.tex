@@ -11,7 +11,7 @@ In practice, real applications use a variant called \textbf{k-Approximated Neare
 \clearpage
 \begin{figure}[t]
     \centering
-    \includesvg[width=0.9\textwidth]{img/knn_1d.svg}
+    \includesvg[width=0.8\textwidth]{img/knn_1d.svg}
     \caption{Example of k-NN in a 1-dimensional space.}
 \end{figure}
 \fussy
@@ -28,10 +28,42 @@ A proximity graph is a graph where each node is a document and each edge between
 An improvement over NSW is \textbf{Hierarchical Navigable Small World} (\textbf{HNSW}) graphs, which introduce a hierarchy of nodes to increase the chances of success and potentially speed up the search. As the graph is being constructed, each new node is also assigned a layer, randomly chosen from a scale with an exponentially deacaying probability distribution (the higher the layer, the lower the chances of being chosen). A proximity graph is constructed at each layer, and any node in a layer $l$ is also an entry point for the graph in the layer $l-1$, allowing vertical movement across the hierarchy. The greedy search algorithm is modified to start from an element in the top layer, and gradually move closer and closer to the query by navigating the graph either in the current layer, or by moving to a lower layer when appropriate.
 \begin{figure}[h]
     \centering
-    \includesvg[width=0.9\textwidth]{img/hnsw.svg}
+    \includesvg[width=0.8\textwidth]{img/hnsw.svg}
     \caption{Example of a greedy search in 1-dimensional data to find the predecessor of the query using a HNSW graph. The blue arrows and nodes represent the direction of the search, the red nodes are the neighbors that are larger than the query, and the green node is the predecessor.}
 \end{figure}
 
 \section{Product Quantization}
 
 Product quantization is a lossy compression technique often used together with HNSW graphs to reduce the space usage of the data and make distance computations faster. This technique breaks up a $d$-dimensional vector into $m$ chunks of size $d/m$ each, and replaces each chunk with a code of 1 byte. 
+First, all documents are split into $m$ chunks. Then, $k$-means is used to find 256 centroids among the chunks; the $k$-means algorithm is a clustering algorithm that partitions the data into $k$ clusters, producing a Voronoi tessellation. Finally, each chunk is associated to the centroid closest to it, and the code of the chunk is the index of the centroid.
+\begin{figure}[h]
+    \centering
+    \includesvg[width=0.70\textwidth]{img/prod_quantization_1.svg}
+    \caption{Example of product quantization of a 12-dimensional vector, split into 4 chunks.}
+\end{figure} \\
+To perform a $k$-NN search, the query is also split into $m$ chunks; the distance between the query and a document can then be approximated as the sum of the distances between the chunks of the query and the centroids to which the chunks of the documents have been associated with.
+\begin{figure}[h]
+    \centering
+    \includesvg[width=0.75\textwidth]{img/prod_quantization_2.svg}
+    \caption{Example of search. The query is compared to the centroids only, and the documents are not decompressed.}
+\end{figure}
+
+\section{Neural Information Retrieval and k-ANN}
+
+Large language models encode documents and queries into embeddings, which can be of three types: dense single-vector, dense multi-vector, and sparse single-vector embeddings. The last type is the most efficient in terms of time and space, and is interpretable by design (since each dimension of the vector corresponds to some feature of the document, its presence or absence is immediarely evidend and comparable with others). This section will illustrate how $k$-NN searches can be done on sparse vectors, and ways to make them more efficient.
+
+Assume we have $n$ documents and $m$ different features in the dataset. Realistically, $n$ can be in the order of millions, and $m$ in the order of tens/hundreds of thousands. Since the data is sparse, each document has very little non-zero components (around few hundreds). If we built a forward index, pairing each document ID to the list of non-zero components it has, we'd have some million rows, and some hundreds of entries per row. Now, we assume to have a query with $m'$ non-zero components ($m'$ will also be pretty small), and we want to find the document vectors that are most similar to it (e.g., maximize the dot product). The brute force approach consists in scanning the forward index to retrieve the document vectors one at a time, calculating the dot product with the query vector, and selecting the $k$ documents that maximize the product. This approach is  very slow, as the number of dot products to calculate is exactly $n$.
+
+We've previously seen how inverted indexes can be used to efficiently retrieve documents in a collection. We can build an inverted index where each row is a feature associated to the list of documents where that feature is non-zero. The total number of rows is $m$, and the number of entries per row is a fraction of $n$. To perform the search, the index is scanned in a TAAT fashion, going through the lists associated with the non-zero entries of the query, and calculating the dot product only with the documents in those lists. This approach is faster than the previous one, but is still inefficient, as the number of dot products to calculate is $O(m'n)$.
+
+\textbf{Seismic} is an algorithm that allows effective and efficient approximate retrieval that uses both the forward and the inverted index. The key idea behind this algorithm is the ``concentration of importance'' property of the dot product: by taking the top 10\% of the largest components in queries and documents, the 85\% (on average) of the dot product is preserved. This property is used to limit the size of the inverted index. When component $i$ is inserted in the index, all the IDs of the documents that have a non-zero value in $i$ are added to its list. Then, the IDs are sorted in descending order, by the value of component $i$ in the respective documents. That way, the documents at the start of the list are those with the highest component value, and those at the end are those with the lowest value. The lists of the index are then truncated, keeping only the first $\lambda$ entries for a fixed $\lambda$. When a search is made, only the top $\sigma$ components of the query are considered for the scan of the inverted index ($\sigma$ is also a fixed hyperparameter).
+
+This pruning already greatly improves efficiency, but the algorithm is still forced to evaluate all the documents in each list of the top $\sigma$ components. Seismic uses a form of dynamic pruning to significantly reduce the number of documents to evaluate through blocking and summaries. \textbf{Blocking} consists in partitioning each inverted list into $\beta$ groups, so that a group contains documents that are similar to each other (this is done via a clustering algorithm). For each group, a \textbf{summary} is built to ``represent'' it, so it can be used to quickly skip the group if the dot product between the query and the summary is too low.
+
+The summary can be built by simply taking the maximum value of each component across all the documents in that block. This summary is always conservative, meaning that its dot product with the query is always greater or equal than the dot product with any document in the group. However, the number of non-zero entries in the summary grows quickly with the block size. To address this problem, the summary itself is also pruned by only keeping the largest non-zero components: because of the ``concentration of importance'' property, the dot product will still be precise enough even if no longer conservative, while the number of components to consider is greatly reduced.
+\begin{figure}[h]
+    \vspace{10pt}
+    \centering
+    \includesvg[width=0.9\textwidth]{img/seismic_summaries.svg}
+    \caption{Example of how summaries are built in Seismic. The left side shows the original summary, the right side shows the pruned summary.}
+\end{figure}
