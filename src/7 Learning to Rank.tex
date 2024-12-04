@@ -136,7 +136,7 @@ To improve the process, we can consider three efficiency vs. effectiveness trade
  
     \item \textbf{Number of matching candidates}: we either consider a large set of candidates, which is expensive but produces a higher-quality result, or we consider a small set of candidates, which is faster, but may produce low-quality results. 
 
-    \item \textbf{Model complexity}: we either build a complex, slow, and high quality model, or a simple, fast, but low quality model. While using a multi-stage pipeline
+    \item \textbf{Model complexity}: we either build a complex, slow, and high quality model, or a simple, fast, but low quality model.
 \end{itemize}
 
 To handle these trade-offs, we can use a \textbf{two-stage ranking} or, in general, \textbf{multi-stage ranking} pipeline, where multiple rankers are combined to produce a result. A common strategy for two-stage pipelining is to use a recall-oriented ranker to isolate a subset of $k$ documents, which are then used as input for a precision-oriented ranker. The first ranker is trained to maximize the number of relevant documents in the top $k$ positions, while the second ranker is trained to maximize the quality of the ranking in the top $k$ positions. In multi-stage ranking, multiple rankers can be used, each with a different objective. This also allows the pipeline to control which features are used when evaluating the documents, as well as control the complexity of each step.

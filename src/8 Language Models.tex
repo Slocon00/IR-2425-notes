@@ -41,3 +41,62 @@ In CBOW, the first layer takes as input the sparse representation of the hot-one
 In general, an \textbf{embedding layer} in a neural network is the first layer of the network, and is used to convert the input data into a dense representation specifically designed for the task; it can be initialized with random weights and gradually adjusted during the training phase, or it can be initialized with pre-trained embeddings that are kept fixed (so not modified by the training). Since neural networks process data in batches, and all batches must be of the same length, a \textbf{padding word} is used to fill shorter sequences, adding it before or after its words to reach the desired length.
 
 The latest models are based on deep learning techniques, such as bi-directional character level Long Short Term Memory (LSTM), and multi-headed self-attention (a technique that weighs how important a word is in a sentence based on semantic). These models are cabable of capturing a lot of information about language, but are also very complex and may have up to billions of parameters.
+
+\textbf{Bidirectional Encoder Representation from Transformers} (\textbf{BERT}) is a language model introduced in 2018, designed to pre-train models on large amounts of unlabeled text data which can be fine-tuned to solve specific tasks (e.g., spam detection, topic classification, question answering, text generation). BERT captures the context of a word bidirectionally, considering both words coming before and after the target (unlike other models that only consider the words before). Its architecture is a multi-layer bidirectional Transformer encoder.
+
+The input representation used by BERT can represent both single sentences and pairs of sentences (for example, question-answer pairs). The first token of a sequence is a special \textbf{classification token}, \texttt{[CLS]}. The hidden state corresponding to this token can be then used as a sentence representation for classification tasks. Sentence pairs acked into the same sequence are separated by the special token \texttt{[SEP]}. In addition to the embeddings of the actual words, \textbf{segment embeddings} and \textbf{position embeddings} are used as well. The segment embeddings are used to specify which word belongs to which sentence in the pair (if the input is a pair), while the position embeddings are used to specify the position of the word in the sequence.
+\begin{figure}[h]
+    \vspace{10pt}
+    \centering
+    \includesvg[width=0.8\textwidth]{img/bert_input.svg}
+    \caption{BERT input representation.}
+\end{figure}
+
+BERT is trained on two tasks: Masked Language Model, and Next Sentence Prediction. The \textbf{Masked Language Model} randomly masks some tokens from the input, and the objective is to predict which words are missing based only on the surrounding context. \textbf{Next Sentence Prediction} has the objective of learning wheter two sentences are consecutive or not, providing the model a set of examples of two sentences each, where 50\% of the examples are consecutive and 50\% are not.
+
+\textbf{Self-attention} is a mechanism that computes the importance of a token in a sequence relative to all other tokens; self-attention layers are dedicated layers in the network which produce a set of weights that represent the importance that each token has on every other token in the sequence. \textbf{Multi-headed self-attention} is an extension of self-attention used by BERT that calculates multiple set of weights (in parallel). The output of each ``head'' is concatenated, and passed through a linear layer to combine the information and produce a single output.
+
+\subsection{Neural Approaches for Information Retrieval}
+
+There are two major directions to combining neural models with information retrieval:
+\begin{itemize}
+    \item \textbf{Interaction-based methods}, where first the term-level similarity between a query and a document is calculated (online) by using their embeddings, and the final ranking is obtained by a neural computation that takes as input the similarities. 
+    \item \textbf{Representation-based methods}, where each document and each query is represented separately as a dense vector, obtained through a sequence of neural computations (offline for the documents, online for the queries). The final ranking is based on the similarity of the dense vectors.
+\end{itemize}
+
+\paragraph{Interaction-based Methods}
+\sloppy
+Interaction-based models encode information contained in the query and the document in a single embedding. A model can be trained to produce the ranking score as output. This can be done using BERT, by using the \texttt{[CLS]} token as the aggregated representation of the pair to be used for calculating the score. The model can also be adapted to produce a ranking, either by only considering single query-document pairs, of using a pair-wise approach that considers two documents per query (one relevant, one not relevant).
+
+\fussy
+\paragraph{Representation-based Methods}
+Representation-based models learn a projection of the (sparse) feature vectors that represent the query and the document into a dense embedding in a low-dimensional space. The models mentioned above all fall in this category. For information retrieval, specifically, the training data is represented by pairs or triples data (so either query-document or query-document1-document2), and the model is trained to produce close embeddings for similar inputs, and distant embeddings for distant inputs. As a loss function, the \textbf{pairwise loss} can be used, which is defined as:
+\begin{equation*}
+    L(q,d) = \begin{cases}
+        d(q,d) & \text{if} \ d \in D^+ \\
+        \max(0, m - d(q,d)) &\text{if} \ d \in D^-
+    \end{cases}
+\end{equation*}
+By reducing this loss, the distance between the query and the relevant document is minimized to be as close to 0 as possible, while the distance between the query and the irrelevant document is maximized to be over $m$.
+
+When constructing the dataset, an important aspect is how to choose the negative examples. Positive examples are chosen from supervision, and are always documents that are close to the query. Ideally, the negative examples added to the dataset should be as close as possible to the query (from the \textbf{hard negatives}), so that they are harder to distinguish from positives and the model can learn how to discriminate between them. If the negatives were chosen from documents that are too far (\textbf{easy negatives}), they would be too easy to distinguish and the model would not learn well. Common strategies to selct examples are \textbf{random sampling}, \textbf{in-batch selection} (samples are selected from the same batch as the positive ones), and \textbf{cross-batch selection} (negative samples are selected from different batches).
+\begin{figure}[h]
+    \centering 
+    \includesvg[width=0.5\textwidth]{img/negatives.svg}
+    \caption{Negative examples in a dataset. Hard negatives are close to the query, while easy negatives are far.}
+\end{figure} \\
+Hard negatives can be chosen using two types of sampling: \textbf{static sampling}, in which hard negatives are pre-computed before training and never change, and \textbf{dynamic sampling}, in which hard negatives are chosen as the current top-ranked irrelevant documents produced by the model as it is trained (meaning that the set of hard negatives changes at each step).
+
+To efficiently retrieve documents embedded in dense vectors, the most commonly used algorithm is k-approximate nearest neighbors. Ways to implement the algorithm will be shown in the next chapter. \textbf{Approximate nearest neighbor Negative Contrastive Estimation} (\textbf{ANCE}) is a representation learning method that selects hard negatives dynamically. It uses a BERT Siamese encoder for query and document embeddings, i.e., two identical BERT models that share the same weights but process data individually. Each time a certain number of batches of data is processed, the model stops the training and updates the approximate-nn index used to identify hard negatives.
+
+\textbf{ Contextualized Late Interaction over BERT} (\textbf{ColBERT}) is a model for document ranking that adapts BERT for efficient retrieval. It uses two separate encoders for query and document, producing a term-based representation of them; this means that each document/query is represented by a set of vectors, one per term. This architecture is called \textbf{late interaction}, because document representations can be calculated offline, while query representations are calculated and compared to the documents online. After producing these encodings, the term-wise similarity between them is calculated, and the final similarity is obtained as the sum of the maximum similarities:
+\begin{equation*}
+    s_{q,d} = \sum_{i \in |E_q|} \max_{j \in |E_d|} E_{q_i} \cdot E_{d_j}^T
+\end{equation*}
+Here, the similarity is the dot product between the term vectors.
+\begin{figure}[h]
+    \vspace{15pt}
+    \centering
+    \includesvg[width=0.70\textwidth]{img/doc_term_sim_colbert.svg}
+    \caption{How similarity between query and document is calculated in ColBERT. The term similarities highlighted in red are the ones that are summed to obtain the final similarity.}
+\end{figure}
