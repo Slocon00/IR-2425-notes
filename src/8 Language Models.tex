@@ -1,6 +1,6 @@
 \chapter{Language Models}
 
-Language models are probailistic models of natural language, and are used in many applications such as speech recognition, machine translation, or text generation. In information retrieval, they are used to estimate the probability of a document being relevant to a query by comparing the words contained in both. Language models can be classified in two categories: pure statistical models, and neural models.
+Language models are probabilistic models of natural language, and are used in many applications such as speech recognition, machine translation, or text generation. In information retrieval, they are used to estimate the probability of a document being relevant to a query by comparing the words contained in both. Language models can be classified in two categories: pure statistical models, and neural models.
 
 \section{Statistical Language Models}
 A \textbf{statistical language model} is a probability distribution over sequences of words. Given a sequence of words $w_1 w_2 \dots w_n$, we can compute the probability of the sequence as:
@@ -44,7 +44,7 @@ The latest models are based on deep learning techniques, such as bi-directional 
 
 \textbf{Bidirectional Encoder Representation from Transformers} (\textbf{BERT}) is a language model introduced in 2018, designed to pre-train models on large amounts of unlabeled text data which can be fine-tuned to solve specific tasks (e.g., spam detection, topic classification, question answering, text generation). BERT captures the context of a word bidirectionally, considering both words coming before and after the target (unlike other models that only consider the words before). Its architecture is a multi-layer bidirectional Transformer encoder.
 
-The input representation used by BERT can represent both single sentences and pairs of sentences (for example, question-answer pairs). The first token of a sequence is a special \textbf{classification token}, \texttt{[CLS]}. The hidden state corresponding to this token can be then used as a sentence representation for classification tasks. Sentence pairs acked into the same sequence are separated by the special token \texttt{[SEP]}. In addition to the embeddings of the actual words, \textbf{segment embeddings} and \textbf{position embeddings} are used as well. The segment embeddings are used to specify which word belongs to which sentence in the pair (if the input is a pair), while the position embeddings are used to specify the position of the word in the sequence.
+The input representation used by BERT can represent both single sentences and pairs of sentences (for example, question-answer pairs). The first token of a sequence is a special \textbf{classification token}, \texttt{[CLS]}. The hidden state corresponding to this token can be then used as a sentence representation for classification tasks. Sentence pairs packed into the same sequence are separated by the special token \texttt{[SEP]}. In addition to the embeddings of the actual words, \textbf{segment embeddings} and \textbf{position embeddings} are used as well. The segment embeddings are used to specify which word belongs to which sentence in the pair (if the input is a pair), while the position embeddings are used to specify the position of the word in the sequence.
 \begin{figure}[h]
     \vspace{10pt}
     \centering

@@ -207,7 +207,7 @@ The algorithm is similar to the one described above, but with some differences:
     \begin{equation*}
         \textit{score} = \frac{(\sum_i^n \textit{Residual}_i)^2}{n + \lambda}
     \end{equation*}
-    where $n$ is the number of instances in the dataset.
+    where $n$ is the number of instances in the dataset, and $\lambda$ is a regularization hyperparameter.
 
     \item All possible splits across all features are evaluated to find the best one. To do so, the \textbf{gain} of a split is calculated as the comparison between the similarity score of the new regions, and that of the original region of the input space:
     \begin{equation*}
@@ -229,7 +229,7 @@ The computational time required for a split is $\Theta (\# \text{features} \time
     \item \textbf{Exclusive Feature Bundling} (\textbf{EFB}): since the feature space is ofter very sparse in large datasets, features that are mutually exclusive, i.e., are never both non-zero simultaneously, are grouped together to reduce the dimensionality of the data. This way, the time reuired to find a split is reduced to $\Theta (\# \text{bundles} \times \# \text{bins})$.
 \end{itemize}
 
-\subsection{Efficient Training of Ensembles of Trees}
+\subsection{Efficient Scoring with Ensembles of Trees}
 
 Once the ensemble is trained, it can be used to score documents. Each query-document feature vector must traverse every tree in the ensemble to find the score each of them assigns it. The naive approach is to model the tree using structs: each node is a struct with a feature id, a threshold, and the pointers to the left and right children. Leaves are special nodes, and only contain scores. The problem with this approach is the high branch misprediction rate, since there is no way of telling which child node to visit at each level. The goal of a good algorithm is to try to prune as many unpredictable branches as possible to reduce the misprediction rate. Another problem is low cache hit ratio, since accesses jump around the memory every time a node is visited. An alternative is to not explicitly store the tree, and instead hardcode the nodes as a set of nested if-then-else blocks. The compiler may see regularities in the code, and optimize it accordingly, but presents the same problems as before.
 
